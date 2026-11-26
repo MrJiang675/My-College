@@ -8,7 +8,7 @@ from playwright.sync_api import sync_playwright
 root = Path(__file__).resolve().parents[1]
 class Spa(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=str(root/'build/Argus-frontend/dist'), **kwargs)
+        super().__init__(*args, directory=str(root/'Argus-frontend/dist'), **kwargs)
     def do_GET(self):
         if self.path.startswith('/app/'):
             self.path = '/index.html'
@@ -51,6 +51,7 @@ def check():
                 page.goto(f'http://127.0.0.1:{server.server_port}/app/college/practice')
                 form=page.locator('main.college form').filter(has=page.get_by_label('给助手的任务'))
                 assert page.locator('article svg').count()==0
+                form.get_by_label('给助手的任务').wait_for()
                 assert form.get_by_role('button').count()==1
                 form.get_by_label('给助手的任务').fill('使用RC充电示例')
                 form.get_by_text('发送').click()
@@ -77,3 +78,5 @@ def check():
     finally: server.shutdown()
 
 if __name__=='__main__': check()
+
+
