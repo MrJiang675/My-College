@@ -39,3 +39,8 @@ test profile 使用本地 argus_test。将测试数据库密码和模型密钥�
 - 浏览器回归测试需要 Python Playwright 和 Microsoft Edge。构建前端后运行 python tests/browser_workspace.py。该测试使用 API 替身验证交互。Java 测试覆盖用户归属和冲突返回；上线前仍需实测登录、真实 AI、资料库授权、两账户隔离以及跨设备恢复。
 
 [产品交接文档](Argus-学生工作台产品定稿与开发交接.md) · [独立静态 Demo](学生工作台预览/对话实验台版/index.html)
+## 本地双账号集成验收
+
+在专用测试实例监听 127.0.0.1:11001，并应用用户、refresh token 及 college_workspace 表后，可运行 python tests/live_workspace.py。脚本每次创建两个随机测试账号。覆盖未登录返回 401、两个独立登录会话读回同一份草稿、另一账号看不到草稿，以及两个会话并发首次保存或更新时旧版本返回 409。本轮已在 Spring Boot test profile 和 PostgreSQL 16.16 的隔离数据库上通过。
+
+知识库使用 /api/qa/stream-ask 增量展示回答并保存引用片段。浏览器回归还覆盖长上下文追问：限制历史长度以完整发送学生本次问题，超长新问题保留在输入框并提示缩短。该 SSE 回归使用测试事件；真实模型推理和私有讲义检索仍需在配置模型与索引服务的环境验收。

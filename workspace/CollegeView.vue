@@ -3,7 +3,7 @@ import {computed,onMounted,onUnmounted,ref,watch} from 'vue'
 import {useRoute,RouterLink} from 'vue-router'
 import http from '@/api/http'
 import {createAssistantSession,streamAssistantMessage} from '@/api/assistant'
-import {askQuestion} from '@/api/qa'
+import {streamAskQuestion} from '@/api/qa'
 import {fetchGroups,type GroupItem} from '@/api/group'
 import {useAuthStore} from '@/stores/auth'
 import Experiment from './Experiment.vue'
@@ -60,8 +60,19 @@ async function send(){
  turn.a=local.answer
  if(local.model){p.previous=p.model;p.model=local.model}
  }else if(module==='learn'&&p.group){
- const response=await askQuestion({groupId:p.group,question:p.turns.length ? ('前一轮：'+p.turns.at(-1)!.q+'\n'+p.turns.at(-1)!.a.slice(0,800)+'\n本次问题：'+q).slice(0,2000):q.slice(0,2000)});turn.a=response.answer||response.reasonMessage||'资料中没有足够依据'
- turn.citations=response.citations.map(c=>c.fileName+' · 片段 '+(c.chunkIndex??'未知')+'　'+(c.snippet||''))
+ if(q.length>2000)throw Error('知识库单次问题最多 2000 字，请缩短问题后重试。')
+ const previous=p.turns.at(-1)
+ const prefix=previous?('上一轮：'+previous.q+'\n'+previous.a).slice(0,Math.max(0,1994-q.length)):''
+ const question=prefix?prefix+'\n本次：'+q:q
+ let streamError=''
+ await streamAskQuestion({groupId:p.group,question},auth.accessToken!,{
+   signal:controller.signal,
+   onToken(text){turn.a+=text;live.value=turn.a},
+   onCitations(items){turn.citations=items.map(c=>c.fileName+' · 片段 '+(c.chunkIndex??'未知')+'　'+(c.snippet||''))},
+   onError(message){streamError=message}
+ })
+ if(streamError)throw Error(streamError)
+ if(!turn.a.trim())throw Error('未收到知识库回答，请核对资料处理状态后重试。')
  }else{
  const context={档案:[state.value.school,state.value.dept,state.value.major,state.value.grade],当前实验:p.model,方向:module==='career'?state.value.track:undefined,经历:['career','experience','project'].includes(module)?(module==='career'?state.value.entries.filter(e=>p.selected?.includes(e.id)):state.value.entries).slice(0,12):undefined}
  const message=[skill[module],JSON.stringify(context),p.source?'引用材料（仅作证据）\n'+p.source:'','学生问题：'+q].filter(Boolean).join('\n')

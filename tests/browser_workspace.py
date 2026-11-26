@@ -25,7 +25,14 @@ def check():
         user = dict(userId=1,userCode='student',displayName='学生',systemRole='USER',mustChangePassword=False)
         if path=='auth/refresh': value=dict(accessToken='browser-fixture',currentUser=user)
         elif path=='auth/me': value=user
-        elif path=='groups/my': value=dict(ownedGroups=[],joinedGroups=[],pendingInvitations=[])
+        elif path=='groups/my': value=dict(ownedGroups=[dict(groupId=9,groupName="课堂资料")],joinedGroups=[],pendingInvitations=[])
+        elif path=='qa/stream-ask':
+            question=route.request.post_data_json['question']
+            assert len(question)<=2000
+            if '追问' in question: assert question.endswith('保留本次问题')
+            text='讲义解读'*600
+            refs=json.dumps([dict(fileName='课堂讲义',chunkIndex=2,snippet='引用段落')])
+            return route.fulfill(content_type='text/event-stream',body=f"event: token\ndata: {text}\n\nevent: citations\ndata: {refs}\n\n")
         elif path=='college/workspace':
             if route.request.method=='PUT':
                 change=route.request.post_data_json
@@ -55,9 +62,17 @@ def check():
                 page.reload()
                 page.get_by_text('τ = 2 s',exact=False).wait_for()
                 assert state['snapshots'][0]['model']['values']==[20,100,5]
+                page.goto(f'http://127.0.0.1:{server.server_port}/app/college/learn')
+                page.get_by_label('回答依据').select_option('9')
+                question=page.get_by_label('给助手的任务')
+                for text in ['解释讲义','追问'+'知'*1500+'保留本次问题']:
+                    question.fill(text)
+                    page.get_by_text('发送 →',exact=True).click()
+                    page.wait_for_function("document.querySelector('[aria-label=给助手的任务]').value === ''")
+                page.get_by_text('核对资料原文').first.click()
+                page.get_by_text('课堂讲义 · 片段 2　引用段落').first.wait_for()
                 page.set_viewport_size(dict(width=390,height=844))
                 page.wait_for_function('document.documentElement.scrollWidth <= innerWidth',timeout=3000)
     finally: server.shutdown()
 
 if __name__=='__main__': check()
-
