@@ -5,10 +5,10 @@
 ## 先找到正确的项目
 
 - 正式仓库：[MrJiang675/My-College](https://github.com/MrJiang675/My-College)。本次核对的远端 main 为 efaba81（PR #3）。普通克隆即可取得完整 Java、Vue 和 SQL 源码。
-- 本机维护目录：D:\Users\jiang\Documents\ChatGPT\qoder赛\My-College。后文所有文件路径均相对这个目录。当前检出 codex/full-source，与远端 main 的提交差异为本地独有 0 条、远端独有 1 条（合并提交）。
+- 本机维护目录：D:\Users\jiang\Documents\ChatGPT\qoder赛\My-College。后文所有文件路径均相对这个目录。交接材料基于已合入 main 的完整源码布局。
 - 本机正式工作台：[打开首页](http://127.0.0.1:15173/)。本次检查首页返回 200，未登录访问 /api/auth/me 返回 401。注册或登录后从 /app/college 开始。该地址只在运行服务的电脑上可用。
 - [独立 Demo](../demos/student-workspace/index.html)用于回看设计。D:\Argus-replica 是早期副本。日常修改请进入本仓库根目录下的 Argus-frontend、Argus-backend 和 sql。
-- [总体介绍](project-introduction.md)用于报名和答辩；[功能说明](features.md)用于逐板块讲解；[产品定稿](handoff.md)记录设计决策及预期验收。本次交接时总体介绍、功能说明和本指南均在本地 docs，尚未发布到 GitHub。
+- [总体介绍](project-introduction.md)用于报名和答辩；[功能说明](features.md)用于逐板块讲解；[产品定稿](handoff.md)记录设计决策及预期验收。三份说明和本指南均放在仓库 docs 目录，可随源码一并交付。
 
 ## 产品已经做了什么
 
