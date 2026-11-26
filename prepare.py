@@ -52,3 +52,6 @@ test_dir = out / "Argus-backend/src/test/java/com/argus/rag/college"
 test_dir.mkdir(parents=True, exist_ok=True)
 for test in (root / "tests/java").glob("*.java"):
     shutil.copy(test, test_dir)
+schema = out / "sql/schema.sql"
+edit(schema, "VECTOR(512)", "VECTOR(1024)")
+edit(schema, "（512 维）", "（1024 维）")

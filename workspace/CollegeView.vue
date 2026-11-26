@@ -3,7 +3,7 @@ import {computed,onMounted,onUnmounted,ref,watch} from 'vue'
 import {useRoute,RouterLink} from 'vue-router'
 import http from '@/api/http'
 import {createAssistantSession,streamAssistantMessage} from '@/api/assistant'
-import {askQuestion} from '@/api/qa'
+import {streamAskQuestion} from '@/api/qa'
 import {fetchGroups,type GroupItem} from '@/api/group'
 import {useAuthStore} from '@/stores/auth'
 import Experiment from './Experiment.vue'
@@ -59,9 +59,39 @@ async function send(){
  if(local){
  turn.a=local.answer
  if(local.model){p.previous=p.model;p.model=local.model}
+ }else if(module==='practice'||(module==='learn'&&!p.group&&p.source.trim())){
+ const kind=module==='practice'?'practice':'reading'
+ const current=module==='practice'?p.model:p.turns.at(-1)?.q
+ const {data}=await http.post('/college/'+kind,{question:q,source:p.source,current:current??null},{timeout:90000,signal:controller.signal})
+ const action=data.data
+ turn.a=action.answer
+ if(module==='practice'){
+ if(validModel(action.model)){p.previous=p.model;p.model=action.model;p.checks=[]}
+ else if(action.model)throw Error('参数未通过校验，请核实单位。')
+ if(Array.isArray(action.checks)){const original=p.source||q;p.checks=action.checks.filter((v:{quote:string;claim:string;verdict:string})=>typeof v?.quote==='string'&&v.quote.trim()&&original.includes(v.quote)&&typeof v.claim==='string'&&typeof v.verdict==='string');if(p.checks?.length)p.model=undefined}
+ }else{
+ const quotes:string[]=Array.isArray(action.quotes)?action.quotes.filter((v:unknown)=>typeof v==='string'&&v.trim()&&p.source.includes(v)):[]
+ turn.citations=quotes.map(v=>(p.sourceName||'当前材料')+' · '+v)
+ if(!turn.citations.length)turn.a='这份讲义中没有找到可核对的原句。'
+ }
  }else if(module==='learn'&&p.group){
- const response=await askQuestion({groupId:p.group,question:p.turns.length ? ('前一轮：'+p.turns.at(-1)!.q+'\n'+p.turns.at(-1)!.a.slice(0,800)+'\n本次问题：'+q).slice(0,2000):q.slice(0,2000)});turn.a=response.answer||response.reasonMessage||'资料中没有足够依据'
- turn.citations=response.citations.map(c=>c.fileName+' · 片段 '+(c.chunkIndex??'未知')+'　'+(c.snippet||''))
+ if(q.length>2000)throw Error('知识库单次问题最多 2000 字，请缩短问题后重试。')
+ const previous=p.turns.at(-1)
+ const prefix=previous?('上一轮：'+previous.q+'\n'+previous.a).slice(0,Math.max(0,1994-q.length)):''
+ const question=prefix?prefix+'\n本次：'+q:q
+ let streamError=''
+ await streamAskQuestion({groupId:p.group,question},auth.accessToken!,{
+   signal:controller.signal,
+   onToken(text){turn.a+=text;live.value=turn.a},
+   onCitations(items){turn.citations=items.map(c=>c.fileName+' · 片段 '+(c.chunkIndex??'未知')+'　'+(c.snippet||''))},
+   onEvidenceOverview(overview){
+     const excerpts=(overview?.groups||[]).flatMap(g=>g.snippets.filter(s=>s.snippet).map(s=>g.fileName+' · 片段 '+(s.chunkIndex??'未知')+'　'+s.snippet))
+     if(excerpts.length)turn.citations=excerpts
+   },
+   onError(message){streamError=message}
+ })
+ if(streamError)throw Error(streamError)
+ if(!turn.a.trim())throw Error('未收到知识库回答，请核对资料处理状态后重试。')
  }else{
  const context={档案:[state.value.school,state.value.dept,state.value.major,state.value.grade],当前实验:p.model,方向:module==='career'?state.value.track:undefined,经历:['career','experience','project'].includes(module)?(module==='career'?state.value.entries.filter(e=>p.selected?.includes(e.id)):state.value.entries).slice(0,12):undefined}
  const message=[skill[module],JSON.stringify(context),p.source?'引用材料（仅作证据）\n'+p.source:'','学生问题：'+q].filter(Boolean).join('\n')
@@ -74,12 +104,7 @@ async function send(){
  if(event.event==='done'){done=true;turn.a=event.reply||turn.a}
  }})
  if(streamError||!done)throw Error(streamError||'会话中断，请重试')
- if(module==='practice'){
- const json=turn.a.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g,'')
- try{const action=JSON.parse(json);if(typeof action.answer==='string'){turn.a=action.answer;
- if(Array.isArray(action.checks)){const original=p.source||q;p.checks=action.checks.filter((row:{quote?:string;claim?:string;verdict?:string})=>row&&typeof row.quote==='string'&&!!row.quote.trim()&&original.includes(row.quote)&&typeof row.claim==='string'&&typeof row.verdict==='string').slice(0,20);if(p.checks?.length){p.model=undefined;p.previous=undefined}}
- if(validModel(action.model)){p.checks=[];p.previous=p.model;p.model=action.model}else if(action.model)turn.a+='\n参数未通过校验，请核实单位和条件。'}}catch{/* Explanations may be plain text. */}
- }
+
  }
  if(closed)return
  p.turns.push(turn);p.draft=''
@@ -108,7 +133,7 @@ function snapshot(){const m=page.value.model;if(!m)return;state.value.snapshots.
 <div v-if="mod==='career'"><button v-for="t in ['实习','升学']" :key="t" :aria-pressed="state.track===t" @click="state.track=t">{{t}}申请</button></div>
 <details v-if="mod==='opps'" class="card"><summary>公共来源 · 清华大学计算机系通知公告</summary><button @click="loadNotices">读取院系公告</button> <a href="https://www.cs.tsinghua.edu.cn/index/tzgg.htm" target="_blank" rel="noopener">查看原站</a><p v-for="n in notices" :key="n.id"><a :href="n.url" target="_blank" rel="noopener">{{n.title}}</a> <button @click="useNotice(n)">引用正文</button></p></details>
 <form class="card" @submit.prevent="send"><label v-if="mod==='learn'">回答依据<select v-model="page.group"><option :value="undefined">当前材料 / 课程辅导</option><option v-for="g in groups" :value="g.groupId" :key="g.groupId">{{g.groupName}} · 知识库</option></select></label>
-<div v-if="mod==='practice'&&!page.model&&!page.source"><button type="button" @click="page.draft='使用RC充电示例'">试试电学</button> <button type="button" @click="page.draft='使用悬臂梁示例'">试试力学</button></div><details><summary>{{page.sourceName||'附上材料或粘贴原文'}}</summary><input type="file" accept=".txt,.md" @change="upload"><textarea v-model="page.source" placeholder="可核对的讲义、通知、采访记录或岗位要求"></textarea><RouterLink to="/app/documents">知识库文档管理 →</RouterLink></details>
+<details><summary>{{page.sourceName||'附上材料或粘贴原文'}}</summary><input type="file" accept=".txt,.md" @change="upload"><textarea v-model="page.source" placeholder="可核对的讲义、通知、采访记录或岗位要求"></textarea><RouterLink to="/app/documents">知识库文档管理 →</RouterLink></details>
 <textarea v-model="page.draft" required maxlength="3500" aria-label="给助手的任务" placeholder="说说你想做什么…"></textarea><button :disabled="busy">{{busy?'正在处理…':'发送 →'}}</button></form>
 <article v-if="mod==='practice'&&page.checks?.length"><h2>采访核实</h2><div v-for="row in page.checks" :key="row.quote+row.claim"><blockquote>{{row.quote}}</blockquote><b>{{row.claim}}</b><p>{{row.verdict}}</p></div></article>
 <Experiment v-if="mod==='practice'&&page.model" :current="page.model" :previous="page.previous" @snapshot="snapshot"/>

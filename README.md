@@ -39,3 +39,13 @@ test profile 使用本地 argus_test。将测试数据库密码和模型密钥�
 - 浏览器回归测试需要 Python Playwright 和 Microsoft Edge。构建前端后运行 python tests/browser_workspace.py。该测试使用 API 替身验证交互。Java 测试覆盖用户归属和冲突返回；上线前仍需实测登录、真实 AI、资料库授权、两账户隔离以及跨设备恢复。
 
 [产品交接文档](Argus-学生工作台产品定稿与开发交接.md) · [独立静态 Demo](学生工作台预览/对话实验台版/index.html)
+## 本地双账号集成验收
+
+在专用测试实例监听 127.0.0.1:11001，并应用用户、refresh token 及 college_workspace 表后，可运行 python tests/live_workspace.py。脚本每次创建两个随机测试账号。覆盖未登录返回 401、两个独立登录会话读回同一份草稿、另一账号看不到草稿，以及两个会话并发首次保存或更新时旧版本返回 409。本轮已在 Spring Boot test profile 和 PostgreSQL 16.16 的隔离数据库上通过。
+
+知识库使用 /api/qa/stream-ask 增量展示回答并保存引用片段。浏览器回归还覆盖长上下文追问：限制历史长度以完整发送学生本次问题，超长新问题保留在输入框并提示缩短。该 SSE 回归使用测试事件；真实模型推理和私有讲义检索仍需在配置模型与索引服务的环境验收。
+## 真实课程资料与实验验收
+
+本机工作台通过 15173 访问，Spring Boot 监听 15174。课程库上传入口位于文档管理：先建自己的小组，选择该组上传文档，等待 READY；然后在学习助手选择同一资料库。回答末尾可展开「核对资料原文」。本地独立 MinIO、Elasticsearch 8.15.3（IK）、PostgreSQL 16 + pgvector 分别绑定回环端口 19000、19200、55439。test profile 的 embedding-2 输出为 1024 维，新库使用 prepare.py 生成的 build/sql/schema.sql。已有向量库请先核对维数再迁移。
+
+配置真实模型和上述本地服务后运行 python tests/live_course.py。它创建专用账号和课程组，用自编讲义验证入库、流式回答和引用，再检验自然语言生成与修改 RC 模型。短文本也可以直接附在「学习助手」的当前材料，无需建立课程组。直接材料模式只展示能在输入中逐字找到的引用。
