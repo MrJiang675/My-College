@@ -51,7 +51,8 @@ def check():
                 page.goto(f'http://127.0.0.1:{server.server_port}/app/college/practice')
                 form=page.locator('main.college form').filter(has=page.get_by_label('给助手的任务'))
                 assert page.locator('article svg').count()==0
-                form.get_by_text('试试电学').click()
+                assert form.get_by_role('button').count()==1
+                form.get_by_label('给助手的任务').fill('使用RC充电示例')
                 form.get_by_text('发送').click()
                 page.get_by_text('τ = 1 s',exact=False).wait_for()
                 form.get_by_label('给助手的任务').fill('把电阻翻倍')

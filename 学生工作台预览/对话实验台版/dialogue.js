@@ -1,7 +1,7 @@
 const prompts={
  read:['学习助手','哪部分课程内容想弄懂？','讲解本节原理','我想做一道自测'],
  quiz:['学习助手','想练哪部分内容？','讲解本节原理','我想做一道自测'],
- practice:['专业实践','你想验证什么？','观察 RC 电路充电','模拟悬臂梁受力'],
+ practice:['专业实践','你想验证什么？'],
  opps:['校园机会','这项机会，你想核实什么？','我能报名吗','综测加分有什么依据'],
  project:['我的项目','今天为项目做了什么？','记录贡献：','查看已有进展'],
  campus:['校园办事','你要办什么事？','解读当前通知','查看预约材料'],
@@ -13,7 +13,7 @@ function mountDialogue(id,r,a){
  const app=$('app'),result=document.createElement('div');
  while(app.firstChild)result.append(app.firstChild);
  const panel=document.createElement('section');panel.className='studio conversation';
- panel.innerHTML='<small>'+spec[0]+'</small><h1>'+spec[1]+'</h1><form class="paper"><label>给助手的任务<textarea required placeholder="描述你想做的事…"></textarea></label><div class="row"><button class="btn dark">发送 →</button>'+spec.slice(2).map((v,i)=>'<button class="subtle" type="button" data-pick="'+i+'">'+v+'</button>').join('')+'</div>'+(id==='practice'?'<label>或导入指导书（TXT / MD）<input type="file" accept=".txt,.md"></label>':'')+'</form><div class="dialogLog" aria-live="polite"></div><small>本地交互演示 · 建议从示例问题开始</small>';
+ panel.innerHTML='<small>'+spec[0]+'</small><h1>'+spec[1]+'</h1><form class="paper"><label>给助手的任务<textarea required placeholder="描述你想做的事…"></textarea></label><div class="row"><button class="btn dark">发送 →</button>'+spec.slice(2).map((v,i)=>'<button class="subtle" type="button" data-pick="'+i+'">'+v+'</button>').join('')+'</div>'+(id==='practice'?'<label>或导入指导书（TXT / MD）<input type="file" accept=".txt,.md"></label>':'')+'</form><div class="dialogLog" aria-live="polite"></div><small>本地交互演示</small>';
  app.append(panel,result);
  const log=panel.querySelector('.dialogLog'),box=panel.querySelector('textarea');
  const key=id==='quiz'?'read':id;r.dialogues ||= {};const history=r.dialogues[key] ||= [];
