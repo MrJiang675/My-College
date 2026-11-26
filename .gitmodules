@@ -1,0 +1,3 @@
+[submodule "upstream"]
+	path = upstream
+	url = https://github.com/Bruce-computer/University-Student-Professional-Learning-Platform.git
