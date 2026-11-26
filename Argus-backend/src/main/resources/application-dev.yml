@@ -1,0 +1,132 @@
+project:
+  name: Argus-backend
+  version: 1.0.0
+
+server:
+  port: 10001
+
+spring:
+#  autoconfigure:
+#    exclude:
+#        - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAgentAutoConfiguration
+#        - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeChatAutoConfiguration
+#        - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeEmbeddingAutoConfiguration
+#        - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioSpeechAutoConfiguration
+#        - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioTranscriptionAutoConfiguration
+#        - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeImageAutoConfiguration
+#        - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeRerankAutoConfiguration
+
+  application:
+    name: argus-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:106.14.125.122}:${DB_PORT:5432}/${DB_NAME:argus_rag}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+
+  # ──────────────────────────────────────────────
+  # Spring AI Alibaba — DashScope 原生配置
+  # ──────────────────────────────────────────────
+  ai:
+#    model:
+#      chat: openai
+#      embedding: openai
+    dashscope:
+      api-key: ${DASHSCOPE_API_KEY:}
+    zhipuai:
+      # 真实 key 通过环境变量 ZHIPUAI_API_KEY 注入，不写入仓库
+      api-key: ${ZHIPUAI_API_KEY:}
+#      base-url: ${OPENAI_BASE_URL:https://open.bigmodel.cn/api/paas/v4/}
+      chat:
+        options:
+          model: glm-4-flash
+      #openai:
+      #api-key: ${OPENAI_API_KEY:}
+      #base-url: ${OPENAI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
+      embedding:
+        options:
+          # 指定维度，确保与数据库表结构一致
+          dimensions: 1024
+          model: embedding-2
+          # 单个输入超过模型 context length 时由 Ollama 截断，避免上传链路直接失败。
+          truncate: true
+
+    # 下面是 Ollama 相关配置，使用的话需要自己部署ollama对应的向量模型，然后放开spring-ai-starter-model-ollama，注释掉spring-ai-starter-model-openai
+    #    model:
+    #      chat: dashscope
+    #      embedding: ollama
+    #    dashscope:
+    #      api-key: ${DASHSCOPE_API_KEY:}
+    #      chat:
+    #        options:
+    #          model: glm-5
+    #    ollama:
+    #      base-url: http://localhost:11434
+    #      embedding:
+    #        options:
+    #          model: qllama/bge-small-zh-v1.5
+    #          # 单个输入超过模型 context length 时由 Ollama 截断，避免上传链路直接失败。
+    #          truncate: true
+
+
+
+    # PGvector 向量存储（复用已有 PostgreSQL）
+    vectorstore:
+      pgvector:
+        dimensions: 1024
+        index-type: hnsw
+        distance-type: cosine_distance
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+
+storage:
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://106.14.125.122:9000}
+    access-key: ${MINIO_ACCESS_KEY:}
+    secret-key: ${MINIO_SECRET_KEY:}
+    bucket: ${MINIO_BUCKET:argus-rag-documents}
+
+argus:
+  rag:
+    auth:
+      jwt-secret: ${ARGUS_RAG_JWT_SECRET:}
+      issuer: argus-rag
+      access-token-expire-minutes: 30
+      refresh-token-expire-days: 14
+      # 仅开发环境兜底，生产环境仍应显式配置安全密钥。
+      #    jwt-secret: ${ARGUS_RAG_JWT_SECRET:}
+      refresh-cookie-name: ARGUS_RAG_REFRESH_TOKEN
+      # 本地 HTTP 使用 Lax；跨站 HTTPS 部署须同时指定 None 与 Secure=true。
+      refresh-cookie-same-site: ${ARGUS_RAG_AUTH_REFRESH_COOKIE_SAME_SITE:Lax}
+      refresh-cookie-secure: ${ARGUS_RAG_AUTH_REFRESH_COOKIE_SECURE:false}
+    dev-admin:
+      username: ${ARGUS_RAG_DEV_ADMIN_USERNAME:argus_admin}
+      email: ${ARGUS_RAG_DEV_ADMIN_EMAIL:test@test.com}
+      display-name: ${ARGUS_RAG_DEV_ADMIN_DISPLAY_NAME:Bruce}
+      password: ${ARGUS_RAG_DEV_ADMIN_PASSWORD:}
+      user-code: ${ARGUS_RAG_DEV_ADMIN_USER_CODE:ROOT001}
+
+elasticsearch:
+  host: ${ES_HOST:106.14.125.122}
+  port: ${ES_PORT:9200}
+  scheme: ${ES_SCHEME:http}
+  index-name: argus_rag_document_chunks
+
+ingestion:
+  chunking:
+    target-tokens: 240
+    max-tokens: 320
+    overlap-tokens: 32
+  vector:
+    # 控制业务侧每次调用 VectorStore.add 的 chunk 数量，降低单次 Ollama embedding 请求压力。
+    add-batch-size: 9
+
+youcom:
+  search:
+    enabled: false
+    api-key: ${YOUCOM_API_KEY:}
+    top-k: 10

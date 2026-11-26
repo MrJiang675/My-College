@@ -1,0 +1,86 @@
+# 单独启用 test；不要与 dev 同时激活。
+project:
+  name: Argus-backend
+  version: 1.0.0
+
+server:
+  address: 127.0.0.1
+  port: 10001
+
+spring:
+  # 智谱负责本测试的对话和嵌入；停用仍要求独立凭据的 DashScope 服务。
+  autoconfigure:
+    exclude:
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAgentAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeImageAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeVideoAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioSpeechAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioTranscriptionAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeRerankAutoConfiguration
+  application:
+    name: argus-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/argus_test
+    username: argus_test
+    password: ${ARGUS_TEST_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  ai:
+    model:
+      chat: zhipuai
+      embedding: zhipuai
+    zhipuai:
+      api-key: ${ZHIPUAI_API_KEY}
+      chat:
+        options:
+          model: glm-4-flash
+      embedding:
+        options:
+          model: embedding-2
+          dimensions: 1024
+          truncate: true
+    vectorstore:
+      pgvector:
+        dimensions: 1024
+        index-type: hnsw
+        distance-type: cosine_distance
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+storage:
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://106.14.125.122:9000}
+    bucket: ${MINIO_BUCKET:argus-test-documents}
+    access-key: ${MINIO_ACCESS_KEY}
+    secret-key: ${MINIO_SECRET_KEY}
+
+argus:
+  rag:
+    auth:
+      jwt-secret: ${ARGUS_TEST_JWT_SECRET:${random.uuid}}
+      issuer: argus-test
+      access-token-expire-minutes: 30
+      refresh-token-expire-days: 14
+      refresh-cookie-name: ARGUS_TEST_REFRESH
+      refresh-cookie-same-site: Lax
+      refresh-cookie-secure: false
+
+elasticsearch:
+  host: ${ES_HOST:106.14.125.122}
+  port: ${ES_PORT:9200}
+  scheme: ${ES_SCHEME:http}
+  index-name: argus_test_document_chunks
+
+ingestion:
+  chunking:
+    target-tokens: 240
+    max-tokens: 320
+    overlap-tokens: 32
+  vector:
+    add-batch-size: 9
+
+youcom:
+  search:
+    enabled: false
+    top-k: 10

@@ -1,2 +1,8 @@
 build/
 __pycache__/
+
+/upstream/
+.env
+.env.*
+!.env.example
+*.log
