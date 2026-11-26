@@ -59,6 +59,21 @@ async function send(){
  if(local){
  turn.a=local.answer
  if(local.model){p.previous=p.model;p.model=local.model}
+ }else if(module==='practice'||(module==='learn'&&!p.group&&p.source.trim())){
+ const kind=module==='practice'?'practice':'reading'
+ const current=module==='practice'?p.model:p.turns.at(-1)?.q
+ const {data}=await http.post('/college/'+kind,{question:q,source:p.source,current:current??null},{timeout:90000,signal:controller.signal})
+ const action=data.data
+ turn.a=action.answer
+ if(module==='practice'){
+ if(validModel(action.model)){p.previous=p.model;p.model=action.model;p.checks=[]}
+ else if(action.model)throw Error('参数未通过校验，请核实单位。')
+ if(Array.isArray(action.checks)){const original=p.source||q;p.checks=action.checks.filter((v:{quote:string;claim:string;verdict:string})=>typeof v?.quote==='string'&&v.quote.trim()&&original.includes(v.quote)&&typeof v.claim==='string'&&typeof v.verdict==='string');if(p.checks?.length)p.model=undefined}
+ }else{
+ const quotes:string[]=Array.isArray(action.quotes)?action.quotes.filter((v:unknown)=>typeof v==='string'&&v.trim()&&p.source.includes(v)):[]
+ turn.citations=quotes.map(v=>(p.sourceName||'当前材料')+' · '+v)
+ if(!turn.citations.length)turn.a='这份讲义中没有找到可核对的原句。'
+ }
  }else if(module==='learn'&&p.group){
  if(q.length>2000)throw Error('知识库单次问题最多 2000 字，请缩短问题后重试。')
  const previous=p.turns.at(-1)
@@ -69,6 +84,10 @@ async function send(){
    signal:controller.signal,
    onToken(text){turn.a+=text;live.value=turn.a},
    onCitations(items){turn.citations=items.map(c=>c.fileName+' · 片段 '+(c.chunkIndex??'未知')+'　'+(c.snippet||''))},
+   onEvidenceOverview(overview){
+     const excerpts=(overview?.groups||[]).flatMap(g=>g.snippets.filter(s=>s.snippet).map(s=>g.fileName+' · 片段 '+(s.chunkIndex??'未知')+'　'+s.snippet))
+     if(excerpts.length)turn.citations=excerpts
+   },
    onError(message){streamError=message}
  })
  if(streamError)throw Error(streamError)
@@ -85,12 +104,7 @@ async function send(){
  if(event.event==='done'){done=true;turn.a=event.reply||turn.a}
  }})
  if(streamError||!done)throw Error(streamError||'会话中断，请重试')
- if(module==='practice'){
- const json=turn.a.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g,'')
- try{const action=JSON.parse(json);if(typeof action.answer==='string'){turn.a=action.answer;
- if(Array.isArray(action.checks)){const original=p.source||q;p.checks=action.checks.filter((row:{quote?:string;claim?:string;verdict?:string})=>row&&typeof row.quote==='string'&&!!row.quote.trim()&&original.includes(row.quote)&&typeof row.claim==='string'&&typeof row.verdict==='string').slice(0,20);if(p.checks?.length){p.model=undefined;p.previous=undefined}}
- if(validModel(action.model)){p.checks=[];p.previous=p.model;p.model=action.model}else if(action.model)turn.a+='\n参数未通过校验，请核实单位和条件。'}}catch{/* Explanations may be plain text. */}
- }
+
  }
  if(closed)return
  p.turns.push(turn);p.draft=''
