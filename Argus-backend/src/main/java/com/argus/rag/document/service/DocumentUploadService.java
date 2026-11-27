@@ -61,7 +61,9 @@ public class DocumentUploadService {
     /** 文件扩展名最大长度 */
     private static final int MAX_FILE_EXT_LENGTH = 16;
     /** 分片上传最大文件大小：256MB */
-    private static final long MAX_FILE_SIZE = 256L * 1024 * 1024;
+    @org.springframework.beans.factory.annotation.Value("${argus.upload.max-size-mb:10}")
+    private long maxUploadMb = 10;
+    private long maxFileBytes() { return Math.max(1, maxUploadMb) * 1024L * 1024; }
     /** 单个分片的最大大小：10MB */
     private static final long MAX_CHUNK_SIZE = 10L * 1024 * 1024;
     /** 上传会话过期时长：24 小时 */
@@ -374,8 +376,8 @@ public class DocumentUploadService {
         String fileName = sanitizeFileName(uploadRequest.fileName());
         String fileExt = extractFileExt(fileName);
         long fileSize = requirePositive(uploadRequest.fileSize(), "fileSize 非法");
-        if (fileSize > MAX_FILE_SIZE) {
-            throw new BusinessException("上传文件超过大小限制");
+        if (fileSize > maxFileBytes()) {
+            throw new BusinessException("当前单文件上限为 " + maxUploadMb + " MB，请拆分文件或使用内置样例讲义。");
         }
         String contentType = normalizeContentType(uploadRequest.contentType());
         String fileHash = normalizeFileHash(uploadRequest.fileHash());
@@ -745,8 +747,8 @@ public class DocumentUploadService {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("上传文件不能为空");
         }
-        if (file.getSize() > MAX_DIRECT_FILE_SIZE) {
-            throw new BusinessException("上传文件超过大小限制");
+        if (file.getSize() > maxFileBytes()) {
+            throw new BusinessException("当前单文件上限为 " + maxUploadMb + " MB，请拆分文件或使用内置样例讲义。");
         }
         return file;
     }

@@ -1,108 +1,399 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { extent, fields, valueAt, type Model } from './models'
+import { computed, ref, watch } from 'vue'
+import { experimentPlugins, defaultModel, normalCdf, validModel, type Model } from './models'
 
-const props = defineProps<{ current: Model; previous?: Model }>()
-const emit = defineEmits<{ snapshot: [] }>()
+const props = defineProps<{
+  current: Model
+  previous?: Model
+  snapshots?: { title: string; model: Model }[]
+}>()
+const emit = defineEmits<{
+  snapshot: []
+  change: [model: Model]
+  restore: [model: Model]
+  import: []
+  ask: [question: string]
+  news:[]
+}>()
+const mode = ref('自由实验')
+const inspector = ref('参数调节')
 const point = ref(20)
-const old = computed(() => props.previous?.kind === props.current.kind ? props.previous : undefined)
-const xmax = computed(() => Math.max(extent(props.current), old.value ? extent(old.value) : 0))
-const ymax = computed(() => Math.max(valueAt(props.current, 1), old.value ? valueAt(old.value, 1) : 0))
-
-function coords(model: Model, ratio: number) {
-  return [12 + 466 * extent(model) * ratio / xmax.value, 154 - 140 * valueAt(model, ratio) / ymax.value]
+const baseline = ref<Model>()
+const showBaseline = ref(true)
+const showMarkers = ref(true)
+const prediction = ref('')
+const adjusted = ref(false)
+const explained = ref(false)
+const plugin = computed(() => experimentPlugins[props.current.kind])
+const result = computed(() => plugin.value.compute(props.current.values))
+const old = computed(() =>
+  baseline.value?.kind === props.current.kind
+    ? baseline.value
+    : props.previous?.kind === props.current.kind
+      ? props.previous
+      : undefined,
+)
+const oldResult = computed(() => (old.value ? plugin.value.compute(old.value.values) : undefined))
+const allPoints = computed(() => [
+  ...result.value.points,
+  ...(result.value.comparisonPoints || []),
+  ...(showBaseline.value ? oldResult.value?.points || [] : []),
+])
+const xmin = computed(() => Math.min(...allPoints.value.map((p) => p.x)))
+const xmax = computed(() => Math.max(...allPoints.value.map((p) => p.x)))
+const ymax = computed(() => Math.max(...allPoints.value.map((p) => p.y), 1e-12))
+function x(value: number) {
+  return 30 + (650 * (value - xmin.value)) / (xmax.value - xmin.value || 1)
 }
-function line(model: Model) {
-  return Array.from({ length: 101 }, (_, index) => coords(model, index / 100).join(',')).join(' ')
+function y(value: number) {
+  return 230 - (200 * value) / ymax.value
+}
+function line(points: { x: number; y: number }[]) {
+  return points.map((p) => x(p.x) + ',' + y(p.y)).join(' ')
+}
+const observed = computed(() => {
+  const points = result.value.points
+  return points[Math.round((point.value * (points.length - 1)) / 100)]!
+})
+const z = computed(() => (observed.value.x - props.current.values[0]!) / props.current.values[1]!)
+const challenge = computed(() => {
+  if (!oldResult.value) return '请先锁定基准组，再只改变一个参数。'
+  const key =
+    props.current.kind === 'rc' ? '时间常数' : props.current.kind === 'beam' ? '端部挠度' : '标准误'
+  const ratio = result.value.metrics[key]! / oldResult.value.metrics[key]!
+  return Math.abs(ratio - 2) < 0.02
+    ? '达成目标：指标已变为基准的两倍。'
+    : '当前指标为基准的 ' + ratio.toFixed(3) + ' 倍，目标为 2 倍。'
+})
+watch(
+  () => props.current.kind,
+  () => {
+    baseline.value = undefined
+    adjusted.value = false
+    prediction.value = ''
+    explained.value = false
+  },
+)
+function edit(index: number, value: string) {
+  const model = { kind: props.current.kind, values: [...props.current.values] }
+  model.values[index] = Number(value)
+  if (validModel(model)) {
+    emit('change', model)
+    adjusted.value = true
+  }
+}
+function lock() {
+  baseline.value = structuredClone(JSON.parse(JSON.stringify(props.current)))
+}
+function exportRecord() {
+  const blob = new Blob(
+    [
+      JSON.stringify(
+        {
+          model: props.current,
+          baseline: old.value,
+          prediction: prediction.value,
+          result: result.value,
+        },
+        null,
+        2,
+      ),
+    ],
+    { type: 'application/json' },
+  )
+  const url = URL.createObjectURL(blob),
+    a = document.createElement('a')
+  a.href = url
+  a.download = 'argus-experiment.json'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+function requestExplanation() {
+  explained.value = true
+  emit('ask', '请根据当前参数与基准差异解释结果，指出假设条件。')
+}
+const quickValues: Record<string, number[]> = {
+  电阻: [6, 12, 24, 48],
+  电容: [25, 50, 100],
+  样本量: [10, 25, 100],
+  均值: [0, 1, 2],
 }
 </script>
 
 <template>
-  <article class="experiment">
-    <header class="experiment__header">
+  <article class="lab">
+    <header>
       <div>
-        <span class="experiment__kicker">交互实验台</span>
-        <h2>{{ current.kind === 'rc' ? 'RC 充电曲线' : '悬臂梁向下挠度' }}</h2>
+        <small>确定性计算模型 · {{ plugin.discipline }}</small>
+        <h2>{{ plugin.name }}</h2>
       </div>
-      <div class="experiment__legend">
-        <span><i class="is-current" />当前模型</span>
-        <span v-if="old"><i />前一次模型</span>
-      </div>
+      <select v-model="mode" aria-label="实验模式">
+        <option>自由实验</option>
+        <option>引导任务</option>
+        <option>参数对比挑战</option>
+      </select>
     </header>
-
-    <div class="experiment__params">
-      <div v-for="(field, index) in fields[current.kind]" :key="field">
-        <span>{{ field }}</span>
-        <strong>{{ current.values[index] }}</strong>
-      </div>
+    <p class="flow">选模板 / 传指导书 → 提出预测 → 调一个变量 → 对照曲线 → 保存快照</p>
+    <nav aria-label="实验模板">
+      <button
+        v-for="item in experimentPlugins"
+        :key="item.id"
+        :aria-pressed="current.kind === item.id"
+        @click="emit('change', defaultModel(item.id))"
+      >
+        {{ item.name }}</button
+      ><button
+        @click="emit('news')"
+      >
+        新闻采访核实台</button
+      ><button @click="emit('import')">导入指导书 / 跨学科设计</button>
+    </nav>
+    <p>已注册模型使用确定性计算；其他学科进入实验设计与测量方法讨论。</p>
+    <div v-if="mode === '引导任务'" class="task">
+      <label>我的预测<input v-model="prediction" placeholder="先预测，再改变参数" /></label>
+      <ul>
+        <li>{{ prediction ? '✓' : '○' }} 提出预测</li>
+        <li>{{ adjusted ? '✓' : '○' }} 改变变量</li>
+        <li>{{ explained ? '✓' : '○' }} 请求对比解释</li>
+      </ul>
     </div>
-
-    <div class="experiment__chart">
-      <svg viewBox="0 0 500 190" role="img" :aria-label="current.kind === 'rc' ? 'RC 充电电压随时间变化曲线' : '悬臂梁挠度随位置变化曲线'">
-        <line x1="12" y1="154" x2="486" y2="154" stroke="var(--border-default)" />
-        <line x1="12" y1="14" x2="12" y2="154" stroke="var(--border-default)" />
-        <line x1="12" y1="84" x2="486" y2="84" stroke="var(--border-subtle)" stroke-dasharray="3 5" />
-        <polyline v-if="old" :points="line(old)" fill="none" stroke="#7c8da5" stroke-width="2" stroke-dasharray="5 5" />
-        <polyline :points="line(current)" fill="none" stroke="var(--brand-primary)" stroke-width="3" stroke-linejoin="round" />
-        <line :x1="coords(current, point / 100)[0]" :y1="coords(current, point / 100)[1]" :x2="coords(current, point / 100)[0]" y2="154" stroke="var(--brand-primary)" stroke-opacity="0.25" stroke-dasharray="3 4" />
-        <circle :cx="coords(current, point / 100)[0]" :cy="coords(current, point / 100)[1]" r="5" fill="var(--surface-white)" stroke="var(--brand-primary)" stroke-width="2.5" />
-      </svg>
-      <div class="experiment__axis"><span>0</span><span>{{ current.kind === 'rc' ? '时间 / s' : '位置 / m' }}</span><span>{{ extent(current).toPrecision(3) }}</span></div>
+    <p v-if="mode === '参数对比挑战'" role="status" class="task">{{ challenge }}</p>
+    <div class="lab-grid">
+      <section>
+        <svg viewBox="0 0 720 260" role="img" :aria-label="plugin.name + '曲线'">
+          <path d="M30 20 V230 H690" fill="none" stroke="var(--border-default)" />
+          <rect
+            v-if="current.kind === 'normal' && showMarkers"
+            :x="x(result.metrics.置信下界!)"
+            y="30"
+            :width="x(result.metrics.置信上界!) - x(result.metrics.置信下界!)"
+            height="200"
+            fill="var(--brand-primary)"
+            opacity=".09"
+          />
+          <polyline
+            v-if="showBaseline && oldResult"
+            :points="line(oldResult.points)"
+            fill="none"
+            stroke="#bf7c4d"
+            stroke-width="2"
+            stroke-dasharray="6 4"
+          />
+          <polyline
+            :points="line(result.points)"
+            fill="none"
+            stroke="var(--brand-primary)"
+            stroke-width="3"
+          />
+          <polyline
+            v-if="result.comparisonPoints"
+            :points="line(result.comparisonPoints)"
+            fill="none"
+            stroke="#8c70ce"
+            stroke-width="2"
+          />
+          <circle v-if="showMarkers" :cx="x(observed.x)" :cy="y(observed.y)" r="4" fill="#bd7344" />
+          <text x="30" y="252" fill="currentColor">{{ xmin.toPrecision(3) }}</text>
+          <text x="640" y="252" fill="currentColor">{{ xmax.toPrecision(3) }}</text>
+        </svg>
+        <small v-if="current.kind === 'normal'"
+          >绿色为总体密度，紫色为均值抽样分布，阴影为均值的 95% 区间。</small
+        >
+        <label
+          >观察{{ current.kind === 'rc' ? '时刻' : current.kind === 'beam' ? '位置' : '值'
+          }}<input v-model.number="point" aria-label="观察位置" type="range" min="0" max="100"
+        /></label>
+        <div class="hud">
+          <div v-for="(metric, key) in result.metrics" :key="key">
+            <small>{{ key }}</small
+            ><b>{{ metric.toPrecision(4) }}</b>
+          </div>
+          <div>
+            <small>当前横轴</small><b>{{ observed.x.toPrecision(4) }}</b>
+          </div>
+          <div>
+            <small>{{ current.kind === 'normal' ? '密度' : '当前读数' }}</small
+            ><b>{{ observed.y.toPrecision(4) }}</b>
+          </div>
+          <div v-if="current.kind === 'normal'">
+            <small>z / 累积分位</small
+            ><b>{{ z.toFixed(2) }} / {{ (100 * normalCdf(z)).toFixed(2) }}%</b>
+          </div>
+          <div v-if="oldResult && current.kind === 'rc'">
+            <small>Δτ（s）</small
+            ><b>{{ (result.metrics.时间常数! - oldResult.metrics.时间常数!).toPrecision(4) }}</b>
+          </div>
+        </div>
+        <div class="actions">
+          <button @click="lock">锁定当前为基准</button
+          ><button @click="emit('change', defaultModel(current.kind))">重置参数</button
+          ><button @click="exportRecord">导出记录</button
+          ><button @click="requestExplanation">请助手解释差异</button>
+        </div>
+      </section>
+      <aside>
+        <nav>
+          <button
+            v-for="tab in ['参数调节', '实验步骤与假设', '历史快照对比']"
+            :key="tab"
+            :aria-pressed="inspector === tab"
+            @click="inspector = tab"
+          >
+            {{ tab }}
+          </button>
+        </nav>
+        <template v-if="inspector === '参数调节'"
+          ><label v-for="(param, index) in plugin.parameterSchema" :key="param.name"
+            >{{ param.name }}（{{ param.unit }}）
+            <input
+              type="number"
+              :value="current.values[index]"
+              :min="param.min"
+              :max="param.max"
+              :step="param.step"
+              @change="edit(index, ($event.target as HTMLInputElement).value)"
+            />
+            <input
+              type="range"
+              :aria-label="param.name"
+              :value="current.values[index]"
+              :min="param.min"
+              :max="Math.min(param.max, Math.max(param.defaultValue * 4, 4))"
+              :step="param.step"
+              @input="edit(index, ($event.target as HTMLInputElement).value)"
+            />
+            <button
+              v-for="v in quickValues[param.name] || []"
+              :key="v"
+              @click="edit(index, String(v))"
+            >
+              {{ v }}
+            </button> </label
+          ><label><input v-model="showBaseline" type="checkbox" />显示基准曲线</label
+          ><label><input v-model="showMarkers" type="checkbox" />关键点标注</label></template
+        >
+        <p v-if="inspector === '实验步骤与假设'">
+          {{ plugin.summary }}。先固定条件，记录预测，再改变一个变量。{{
+            current.kind === 'rc'
+              ? '电阻决定电容充至同一比例所需的时间。'
+              : current.kind === 'beam'
+                ? '加载位置和截面决定弯曲响应。'
+                : '独立同分布样本，已知总体标准差；均值的标准误随样本量平方根下降。'
+          }}
+        </p>
+        <template v-if="inspector === '历史快照对比'"
+          ><button
+            v-for="(snap, i) in snapshots || []"
+            :key="i"
+            @click="emit('restore', snap.model)"
+          >
+            {{ snap.title }}
+          </button></template
+        >
+        <button class="primary" @click="emit('snapshot')">保存当前快照</button>
+      </aside>
     </div>
-
-    <label class="experiment__slider">
-      <span>{{ current.kind === 'rc' ? '观察时刻' : '测量位置' }}<strong>{{ (extent(current) * point / 100).toPrecision(4) }} {{ current.kind === 'rc' ? 's' : 'm' }}</strong></span>
-      <input v-model.number="point" type="range" min="0" max="100" step="1">
-    </label>
-
-    <div class="experiment__readout">
-      <div><span>{{ current.kind === 'rc' ? '当前电压' : '当前挠度' }}</span><strong>{{ valueAt(current, point / 100).toPrecision(4) }} <small>{{ current.kind === 'rc' ? 'V' : 'mm' }}</small></strong></div>
-      <div v-if="current.kind === 'rc'"><span>时间常数 τ</span><strong>{{ (extent(current) / 5).toPrecision(4) }} <small>s</small></strong></div>
-      <div v-else><span>末端挠度</span><strong>{{ valueAt(current, 1).toPrecision(4) }} <small>mm</small></strong></div>
-    </div>
-
-    <footer class="experiment__footer">
-      <p>{{ current.kind === 'rc' ? '理想直流阶跃充电，初始电压 0 V。' : '集中力作用下的静载挠度，向下为正。' }}</p>
-      <el-tooltip content="保存当前这组实验参数与曲线，之后可一键恢复继续对比。" placement="top">
-        <button type="button" @click="emit('snapshot')">保存快照</button>
-      </el-tooltip>
-    </footer>
   </article>
 </template>
-
 <style scoped>
-.experiment { min-width: 0; padding: 22px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-white); box-shadow: var(--shadow-xs); }
-.experiment__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-.experiment__kicker { color: var(--brand-primary); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; }
-.experiment h2 { margin: 4px 0 0; font-size: 1.04rem; }
-.experiment__legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; color: var(--text-muted); font-size: 0.68rem; }
-.experiment__legend span { display: inline-flex; align-items: center; gap: 5px; }
-.experiment__legend i { width: 16px; border-top: 2px dashed #7c8da5; }
-.experiment__legend i.is-current { border-top: 2px solid var(--brand-primary); }
-.experiment__params { display: grid; grid-template-columns: repeat(auto-fit, minmax(86px, 1fr)); gap: 8px; margin: 18px 0 12px; }
-.experiment__params div { display: grid; gap: 3px; padding: 9px 10px; border-radius: var(--radius-sm); background: var(--surface-subtle); }
-.experiment__params span { color: var(--text-muted); font-size: 0.66rem; }
-.experiment__params strong { color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; }
-.experiment__chart svg { width: 100%; height: auto; overflow: visible; }
-.experiment__axis { display: flex; justify-content: space-between; margin: -2px 10px 0 28px; color: var(--text-muted); font-size: 0.65rem; }
-.experiment__slider { display: grid; gap: 8px; margin-top: 18px; }
-.experiment__slider > span { display: flex; justify-content: space-between; gap: 10px; color: var(--text-secondary); font-size: 0.76rem; }
-.experiment__slider strong { color: var(--brand-primary-dark); font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; }
-.experiment__slider input { width: 100%; accent-color: var(--brand-primary); }
-.experiment__readout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
-.experiment__readout div { display: grid; gap: 4px; padding: 12px; border: 1px solid rgba(74,144,217,.14); border-radius: var(--radius-sm); background: var(--surface-accent); }
-.experiment__readout span { color: var(--text-secondary); font-size: 0.7rem; }
-.experiment__readout strong { color: var(--brand-primary-dark); font-family: 'JetBrains Mono', monospace; font-size: 1rem; }
-.experiment__readout small { font-size: 0.7rem; font-weight: 500; }
-.experiment__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-subtle); }
-.experiment__footer p { margin: 0; color: var(--text-muted); font-size: 0.7rem; line-height: 1.5; }
-.experiment__footer button { flex-shrink: 0; padding: 8px 13px; border-radius: var(--radius-sm); background: var(--brand-primary); color: #fff; font-size: 0.76rem; font-weight: 700; }
-.experiment__footer button:hover { background: var(--brand-primary-dark); }
-@media (max-width: 520px) {
-  .experiment { padding: 16px; }
-  .experiment__header { flex-direction: column; }
-  .experiment__legend { justify-content: flex-start; }
-  .experiment__readout { grid-template-columns: minmax(0, 1fr); }
-  .experiment__footer { align-items: flex-start; flex-direction: column; }
+.lab {
+  padding: 20px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-white);
+  color: var(--text-primary);
+}
+header,
+.actions,
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+h2 {
+  margin: 4px 0;
+}
+.flow,
+small {
+  color: var(--text-secondary);
+}
+button,
+select {
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  padding: 7px;
+  background: var(--surface-subtle);
+  color: inherit;
+  cursor: pointer;
+}
+button[aria-pressed='true'],
+.primary {
+  background: var(--brand-primary);
+  color: white;
+}
+.lab-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 18px;
+  margin-top: 18px;
+}
+.lab-grid > section {
+  min-width: 0;
+}
+svg {
+  width: 100%;
+  background: var(--surface-subtle);
+  border-radius: 8px;
+}
+aside {
+  padding: 12px;
+  background: var(--surface-subtle);
+  border-radius: 8px;
+}
+label {
+  display: block;
+  margin: 10px 0;
+}
+input:not([type='checkbox']) {
+  width: 100%;
+  accent-color: var(--brand-primary);
+  background: var(--surface-white);
+  color: inherit;
+  border: 1px solid var(--border-default);
+  padding: 5px;
+}
+.hud {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.hud div,
+.task {
+  padding: 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+.hud b,
+.hud small {
+  display: block;
+}
+.hud b {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+}
+.actions {
+  justify-content: flex-start;
+}
+li {
+  display: inline-block;
+  margin-right: 12px;
+}
+@media (max-width: 900px) {
+  .lab-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

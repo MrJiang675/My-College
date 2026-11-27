@@ -1,4 +1,12 @@
 <script setup lang="ts">
+import DemoSampleBar from '@/components/DemoSampleBar.vue'
+import type { DemoSample } from '@/constants/demoSamples'
+const sampleFile=ref<File>()
+function selectSample(_sample:DemoSample,file:File){
+ sampleFile.value=file
+ uploadVisible.value=true
+}
+
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
@@ -97,6 +105,7 @@ async function loadDocuments() {
       query.status = statusFilter.value
     }
     documents.value = await fetchDocuments(query)
+    window.dispatchEvent(new CustomEvent('argus:workspace-progress',{detail:{documents:documents.value.filter(d=>d.status==='READY').length}}))
   } catch (err) {
     documentsError.value = extractApiError(err, '加载文档列表失败')
     documents.value = []
@@ -245,6 +254,8 @@ onMounted(() => {
 
 <template>
   <div class="doc-center">
+<DemoSampleBar module="documents" @load="selectSample" />
+<p class="learning-permission-note">上传资料仅限个人学习与获授权的课程小组内部检索使用，请勿公开传播受版权保护的教材与课件。</p>
     <!-- Decorative background -->
     <div class="doc-center__backdrop" aria-hidden="true">
       <div class="doc-center__blob doc-center__blob--one" />
@@ -387,7 +398,7 @@ onMounted(() => {
     />
 
     <!-- Upload dialog -->
-    <UploadDialog
+    <UploadDialog :initial-file="sampleFile"
       v-model:visible="uploadVisible"
       :group-id="selectedGroupId"
       :group-label="selectedGroupLabel"

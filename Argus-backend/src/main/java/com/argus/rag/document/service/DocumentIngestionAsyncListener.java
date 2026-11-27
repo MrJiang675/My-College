@@ -23,6 +23,9 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Slf4j
 public class DocumentIngestionAsyncListener {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.beans.factory.annotation.Qualifier("ingestionExecutor")
+    private org.springframework.core.task.TaskExecutor executor;
     /** 异步 ETL 执行服务 */
     private final DocumentIngestionAsyncService documentIngestionAsyncService;
 
@@ -43,10 +46,17 @@ public class DocumentIngestionAsyncListener {
      *
      * @param event 文档摄入请求事件（包含 documentId 和 groupId）
      */
-    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(DocumentIngestionRequestedEvent event) {
         log.info("收到文档异步ETL事件(事务已提交): documentId={}, groupId={}", event.documentId(), event.groupId());
-        documentIngestionAsyncService.ingestDocument(event.documentId(), event.groupId());
+        try {
+            executor.execute(() -> {
+                try { documentIngestionAsyncService.ingestDocument(event.documentId(), event.groupId()); }
+                catch (Exception failure) { documentIngestionAsyncService.recover(new RuntimeException("解析失败，请重试"),event.documentId(),event.groupId()); }
+                catch (OutOfMemoryError failure) { documentIngestionAsyncService.recover(new RuntimeException("解析内存不足，请拆分文件"),event.documentId(),event.groupId()); }
+            });
+        } catch (org.springframework.core.task.TaskRejectedException busy) {
+            documentIngestionAsyncService.recover(new RuntimeException("解析队列已满，请稍后重试"),event.documentId(),event.groupId());
+        }
     }
 }

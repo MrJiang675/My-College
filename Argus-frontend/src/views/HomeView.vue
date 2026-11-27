@@ -84,10 +84,10 @@ const steps = [
 ]
 
 const cases = [
-  { icon: 'power', title: '电力', desc: '巡检手册、安全规程、故障排除问答' },
-  { icon: 'finance', title: '金融', desc: '合规检索、风控政策、产品知识库' },
+  { icon: 'power', title: '课程学习', desc: '讲义精读、概念自测、课程问答' },
+  { icon: 'finance', title: '专业实践', desc: '实验条件核对、曲线对比、参数解释' },
   { icon: 'education', title: '教育', desc: '课程知识库、学员自助答疑' },
-  { icon: 'manufacture', title: '制造', desc: '技术文档、设备SOP、供应商资料' },
+  { icon: 'manufacture', title: '升学就业', desc: '项目经历、申请要求、证据整理' },
 ]
 </script>
 
@@ -115,7 +115,7 @@ const cases = [
             <use href="#navPetal" transform="rotate(270 16 16)"/>
             <circle cx="16" cy="16" r="5.5" fill="url(#navGrad)"/>
           </svg>
-          <span>数据洞察中心</span>
+          <span>Argus 学生工作台</span>
         </a>
         <nav class="nav-links">
           <a href="#features">核心功能</a>
@@ -140,17 +140,17 @@ const cases = [
       <div class="hero-content container">
         <div class="hero-badge">
           <span class="badge-pulse"></span>
-          RAG + Agent · 企业级智能知识平台
+          RAG + Agent · 大学生 AI 学习工作台
         </div>
         <h1 class="hero-title">
           让每一次提问<br>
           <span class="text-gradient">都有据可查</span>
         </h1>
         <p class="hero-desc">
-          基于检索增强生成与 AI Agent 技术，将企业私有知识库与大语言模型深度融合，
+          基于检索增强生成与 AI Agent 技术，将课程资料知识库与大语言模型深度融合，
           实现精准溯源、自主编排的可信智能知识服务。
         </p>
-        <div class="hero-actions">
+        <div class="hero-actions"><RouterLink class="btn-outline" to="/preview">先体验内置样例</RouterLink>
           <button class="btn-primary" @click="openAuthModal(true)">
             开始使用
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -164,18 +164,18 @@ const cases = [
         <!-- Metrics -->
         <div class="hero-metrics">
           <div class="metric">
-            <span class="metric-value">98<span class="metric-unit">%</span></span>
-            <span class="metric-label">检索准确率</span>
+            <span class="metric-value">原文</span>
+            <span class="metric-label">引用核对</span>
           </div>
           <div class="metric-divider"></div>
           <div class="metric">
-            <span class="metric-value">&lt;200<span class="metric-unit">ms</span></span>
-            <span class="metric-label">平均响应</span>
+            <span class="metric-value">多轮</span>
+            <span class="metric-label">连续追问</span>
           </div>
           <div class="metric-divider"></div>
           <div class="metric">
-            <span class="metric-value">20<span class="metric-unit">+</span></span>
-            <span class="metric-label">文件格式支持</span>
+            <span class="metric-value">按组</span>
+            <span class="metric-label">课程资料组织</span>
           </div>
         </div>
         <p class="metric-label">界面示意指标，非实测结果。</p>
@@ -228,7 +228,7 @@ const cases = [
       <div class="container">
         <div class="section-header scroll-reveal">
           <span class="section-tag">应用场景</span>
-          <h2 class="section-title">赋能各行各业</h2>
+          <h2 class="section-title">服务课程学习与校园成长</h2>
           <p class="section-desc">灵活适配不同业务场景，释放企业知识资产价值</p>
         </div>
 
@@ -275,9 +275,9 @@ const cases = [
                 <use href="#ftPetal" transform="rotate(270 16 16)"/>
                 <circle cx="16" cy="16" r="5.5" fill="url(#ftGrad)"/>
               </svg>
-              <span>数据洞察中心</span>
+              <span>Argus 学生工作台</span>
             </div>
-            <p>融合 RAG 与 AI Agent 技术的企业级智能知识平台</p>
+            <p>融合 RAG 与 AI Agent 技术的大学生 AI 学习工作台</p>
           </div>
           <div class="footer-col">
             <h4>产品</h4>
@@ -299,7 +299,7 @@ const cases = [
           </div>
         </div>
         <div class="footer-bottom">
-          <p>&copy; 2026 数据洞察中心. All rights reserved.</p>
+          <p>&copy; 2026 Argus 学生工作台. All rights reserved.</p>
         </div>
       </div>
     </footer>

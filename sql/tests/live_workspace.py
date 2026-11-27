@@ -4,7 +4,7 @@ import secrets
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-BASE = "http://127.0.0.1:11001/api"
+BASE = "http://127.0.0.1:15173/api"
 
 def call(method, path, body=None, token=None, expected=200):
     headers = {"Content-Type": "application/json"}
@@ -21,11 +21,9 @@ def call(method, path, body=None, token=None, expected=200):
     return payload.get("data")
 
 def account():
-    name = "college_" + secrets.token_hex(6)
-    password = secrets.token_urlsafe(24)
-    call("POST", "/auth/register", dict(username=name, email=name+"@example.org",
-                                        displayName=name, password=password))
-    return dict(loginId=name, password=password)
+    # Current product creates a passwordless student on its first named login.
+    return {"loginId":"integration_"+secrets.token_hex(12)}
+
 
 def login(credentials):
     return call("POST", "/auth/login", credentials)["accessToken"]

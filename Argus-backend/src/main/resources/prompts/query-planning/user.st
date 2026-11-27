@@ -50,4 +50,4 @@
 }
 
 用户原始问题：
-{question}
+<question>

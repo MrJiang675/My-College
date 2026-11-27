@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DemoGuestButton from "@/components/DemoGuestButton.vue"
 import { ref, reactive, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -99,13 +100,14 @@ async function handleExperienceLogin() {
           <use href="#lpPetal" transform="rotate(270 16 16)"/>
           <circle cx="16" cy="16" r="5.5" fill="url(#loginPageGrad)"/>
         </svg>
-        <span>数据洞察中心</span>
+        <span>Argus 学生工作台</span>
       </a>
 
       <h1>登录</h1>
-      <p class="subtitle">使用您的账号登录数据洞察中心</p>
+      <p class="subtitle">使用您的账号登录Argus 学生工作台</p>
 
-      <form class="login-form" @submit.prevent="handleLogin">
+      <DemoGuestButton />
+    <form class="login-form" @submit.prevent="handleLogin">
         <div class="input-group">
           <label>登录标识</label>
           <input

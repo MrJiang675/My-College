@@ -44,6 +44,8 @@ public class AuthService {
     private final JwtAccessTokenService jwtAccessTokenService;
     private final RefreshTokenService refreshTokenService;
     private final Clock clock;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.argus.rag.college.mapper.WorkspaceMapper workspaceMapper;
 
     public AuthService(
             UserMapper userMapper,
@@ -63,6 +65,9 @@ public class AuthService {
     public AuthTokens login(String loginId, String password) {
         LoginCommand command = validateLoginCommand(loginId, password);
         User user = findUserForLogin(command.loginId());
+        if (user != null && command.loginId().startsWith("demo_guest_") && !command.hasPassword()) {
+            throw new BusinessException("请使用一键体验创建自己的独立空间");
+        }
         if (user == null) {
             if (command.hasPassword()) {
                 throw new BusinessException(INVALID_CREDENTIALS_MESSAGE);
@@ -81,6 +86,19 @@ public class AuthService {
                 Boolean.TRUE.equals(user.getMustChangePassword()),
                 toCurrentUser(user)
         );
+    }
+
+    /** Each review session owns a new account and normal refresh-token lifecycle. */
+    @Transactional
+    public AuthTokens createDemoGuest() {
+        String username = "demo_guest_" + UUID.randomUUID().toString().replace("-", "");
+        AuthTokens tokens = login(username, null);
+        workspaceMapper.create(tokens.userId(), """
+            {"school":"示例大学","dept":"工程学院","major":"通用课程","grade":"大二",
+             "last":"learn","track":"实习","pages":{"learn":{"draft":"请帮我理解讲义中的成立条件","source":"","sourceName":"","turns":[]}},
+             "entries":[{"id":"demo-course","project":"课程调研（演示）","text":"本人负责整理问卷和核对数据。请替换为自己的真实经历。","source":"演示报告待补充"}],"snapshots":[]}
+            """);
+        return tokens;
     }
 
     @Transactional

@@ -653,3 +653,49 @@ docker compose --env-file .env.server-b -f server-b.compose.yml logs -f
 ---
 
 *本文档为分服务器部署的完整指南。如有问题，请检查日志输出或参考各服务的官方文档。*
+
+
+## 2核2G 服务器防 OOM 运维检查
+
+当前 Compose 文件表达 A 节点存储、B 节点后端的拆分方式。单机可分别启用这两份配置。后端镜像启动前在 Java 21 环境执行 Maven package，使用 JRE 容器运行已打包的 JAR。
+
+| 组件 | 默认内存硬上限 | 运行参数 |
+| --- | --- | --- |
+| Spring Boot | 600 MiB | Xms192m、Xmx384m、Metaspace160m、SerialGC |
+| PostgreSQL | 320 MiB | shared_buffers64MB、work_mem4MB、max_connections40 |
+| MinIO | 192 MiB | 原始文档存储 |
+| Elasticsearch（es profile） | 420 MiB | Xms192m、Xmx256m |
+| 默认单机总限额 | 1112 MiB | ES 关闭 |
+| 启用 ES 后单机总限额 | 1532 MiB | 小于 1.5 GiB（1536 MiB） |
+
+A 节点默认 512 MiB，带 ES 为 932 MiB；B 节点默认 600 MiB。local-model 和 es-tools 是独立可选 profile，2G 参赛部署采用远程智谱模型。JVM 堆上限只约束堆，容器限额还涵盖其他内存。现有系统若已常驻占用 1.21 GiB，应先定位并释放无关占用，容器预算无法据此保证整台机器的实际峰值。Swap 用于缓冲，仍需观察内核 OOM 日志。
+
+检查命令可由服务器负责人执行：
+
+```bash
+free -h
+swapon --show
+ps aux --sort=-rss | head -15
+docker stats --no-stream
+sudo journalctl -k --since '-1 hour' | grep -i -E 'oom|out of memory|killed process'
+```
+
+新增独立 2 GiB Swap 文件，确认磁盘有余量，文件已存在时先检查，避免覆盖已有数据：
+
+```bash
+df -h /
+sudo test ! -e /swapfile-argus
+sudo fallocate -l 2G /swapfile-argus
+sudo chmod 600 /swapfile-argus
+sudo mkswap /swapfile-argus
+sudo swapon /swapfile-argus
+swapon --show
+sudo cp /etc/fstab /etc/fstab.argus-backup
+grep -q '^/swapfile-argus ' /etc/fstab || echo '/swapfile-argus none swap sw 0 0' | sudo tee -a /etc/fstab
+echo 'vm.swappiness=20' | sudo tee /etc/sysctl.d/90-argus-swap.conf
+sudo sysctl --system
+```
+
+此时新增 Swap 已可用。若原 500 MiB 的路径确认为 /swapfile，可先确认新 Swap 空闲空间足以承接，再执行 sudo swapoff /swapfile，并在 /etc/fstab 中移除原条目。回退时启用原 Swap，再停用新 Swap，恢复 fstab 备份及原 swappiness 配置。
+
+低内存模式环境变量 ARGUS_ELASTICSEARCH_ENABLED=false，使检索和入库跳过 ES。仅需 ES 时启用 Compose es profile 并将开关设为 true。文档解析只允许一个活跃任务、最多 8 个排队任务；队列满时落为失败并提示重试。每分钟扫描超过 8 分钟的 PROCESSING，更新文档和关联任务状态。

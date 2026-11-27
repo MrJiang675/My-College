@@ -56,7 +56,7 @@ public class AssistantKnowledgeBaseTool {
     ) {
         Long groupId = readGroupId(toolContext);
         AssistantKnowledgeBaseToolResultHolder resultHolder = readResultHolder(toolContext);
-        if (resultHolder.hasCompletedSearch()) {
+        if (!resultHolder.allowInvocation() || resultHolder.hasCompletedSearch()) {
             return new KnowledgeBaseSearchToolResponse(
                     false,
                     "DUPLICATE_TOOL_CALL",
@@ -68,7 +68,16 @@ public class AssistantKnowledgeBaseTool {
             );
         }
         String safeQuery = requireQuery(query);
-        QaRetrievalResult result = qaRetrievalService.retrieveEvidence(groupId, safeQuery);
+        QaRetrievalResult result;
+        try {
+            result=reactor.core.publisher.Mono.fromCallable(()->qaRetrievalService.retrieveEvidence(groupId,safeQuery))
+                    .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+                    .timeout(java.time.Duration.ofSeconds(15)).block();
+        } catch(RuntimeException unavailable) {
+            resultHolder.recordCitations(List.of());
+            return new KnowledgeBaseSearchToolResponse(false,"TOOL_TIMEOUT","检索暂不可用，请根据现有材料说明需要核实的部分",null,
+                    "本轮停止工具调用，指出证据缺口",List.of(),List.of());
+        }
         List<Document> documents = result.bundle().documents();
         if (documents == null || documents.isEmpty()) {
             resultHolder.recordCitations(List.of());

@@ -10,6 +10,12 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class AssistantPromptContextBuilder {
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.argus.rag.college.ModuleSkillPromptRegistry skills;
+    public String withModule(String instruction,com.argus.rag.college.ModuleContext context){
+        return context==null?instruction:instruction+"\n"+skills.render(context);
+    }
+
 
     /**
      * 构建 Agent 的对话系统指令（system instruction）。

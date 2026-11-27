@@ -20,6 +20,9 @@ import java.util.List;
  */
 @Mapper
 public interface IngestionJobMapper extends BaseMapper<IngestionJobEntity> {
+    @org.apache.ibatis.annotations.Update("UPDATE ingestion_jobs j SET status='FAILED', last_error='文档处理已失败，请重试', finished_at=now(),updated_at=now() FROM documents d WHERE j.document_id=d.id AND d.status='FAILED' AND j.status IN ('RUNNING','PENDING')")
+    int failJobsForFailedDocuments();
+
 
     /**
      * 查询处于指定状态且计划执行时间已到的可运行任务。

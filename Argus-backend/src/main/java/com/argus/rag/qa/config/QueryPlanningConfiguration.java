@@ -40,6 +40,8 @@ public class QueryPlanningConfiguration {
     public PromptTemplate queryPlanningUserPromptTemplate() {
         return PromptTemplate.builder()
                 .resource(new ClassPathResource("prompts/query-planning/user.st"))
+                .renderer(org.springframework.ai.template.st.StTemplateRenderer.builder()
+                        .startDelimiterToken('<').endDelimiterToken('>').build())
                 .build();
     }
 }

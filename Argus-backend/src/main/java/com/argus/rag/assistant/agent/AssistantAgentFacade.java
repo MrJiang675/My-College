@@ -65,6 +65,17 @@ public class AssistantAgentFacade {
             Long groupId,
             String userMessage
     ) {
+        return chat(userId,sessionId,toolMode,groupId,userMessage,null);
+    }
+
+    public AssistantAgentResult chat(
+            Long userId,
+            Long sessionId,
+            AssistantToolMode toolMode,
+            Long groupId,
+            String userMessage,
+            com.argus.rag.college.ModuleContext moduleContext
+    ) {
         // 这里把“仅对话模式”的运行时输入收口成两部分：
         // 1) instruction：系统提示词
         // 2) runnableConfig：session/user/toolMode 等 metadata，供 hooks 在 BEFORE_MODEL 阶段读取
@@ -74,6 +85,7 @@ public class AssistantAgentFacade {
                 toolMode,
                 groupId
         );
+        instruction = assistantPromptContextBuilder.withModule(instruction, moduleContext);
         RunnableConfig runnableConfig = assistantRunnableConfigFactory.create(
                 userId,
                 sessionId,
@@ -85,9 +97,11 @@ public class AssistantAgentFacade {
         ReactAgent agent = assistantReactAgentFactory.createAgent(instruction, toolMode, groupId, resultHolder);
         AssistantMessage assistantMessage;
         try {
-            assistantMessage = agent.call(userMessage, runnableConfig);
-        } catch (GraphRunnerException exception) {
-            throw new BusinessException("助手调用失败", exception);
+            assistantMessage = reactor.core.publisher.Mono.fromCallable(()->agent.call(userMessage,runnableConfig))
+                    .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+                    .timeout(java.time.Duration.ofSeconds(45)).block();
+        } catch (Exception exception) {
+            return new AssistantAgentResult("当前检索或模型暂未完成，请依据已有资料核对条件后重试。",resultHolder.currentCitations());
         }
         if (log.isDebugEnabled()) {
             log.debug(
@@ -130,12 +144,25 @@ public class AssistantAgentFacade {
             String userMessage,
             Consumer<String> deltaConsumer
     ) {
+        return streamChat(userId,sessionId,toolMode,groupId,userMessage,deltaConsumer,null);
+    }
+
+    public AssistantAgentResult streamChat(
+            Long userId,
+            Long sessionId,
+            AssistantToolMode toolMode,
+            Long groupId,
+            String userMessage,
+            Consumer<String> deltaConsumer,
+            com.argus.rag.college.ModuleContext moduleContext
+    ) {
         String instruction = assistantPromptContextBuilder.buildChatInstruction(
                 userId,
                 sessionId,
                 toolMode,
                 groupId
         );
+        instruction = assistantPromptContextBuilder.withModule(instruction, moduleContext);
         RunnableConfig runnableConfig = assistantRunnableConfigFactory.create(
                 userId,
                 sessionId,
@@ -149,9 +176,10 @@ public class AssistantAgentFacade {
             // stream() 返回的是图执行过程中的节点输出，这里只抽取模型实际产出的文本 delta。
             Flux<NodeOutput> stream = agent.stream(userMessage, runnableConfig);
             stream.doOnNext(output -> handleStreamingOutput(output, deltaConsumer, finalReply))
+                    .timeout(java.time.Duration.ofSeconds(45))
                     .blockLast();
-        } catch (GraphRunnerException exception) {
-            throw new BusinessException("助手调用失败", exception);
+        } catch (Exception exception) {
+            if(finalReply.isEmpty()) finalReply.append("当前检索或模型已超时，请依据已有资料核对条件后重试。");
         }
         String reply = finalReply.toString().trim();
         if (log.isDebugEnabled()) {

@@ -342,6 +342,7 @@ async function handleLeaveGroup(groupId: number) {
 
 <template>
   <div class="groups-page">
+<p class="learning-permission-note">上传资料仅限个人学习与获授权的课程小组内部检索使用，请勿公开传播受版权保护的教材与课件。</p>
     <!-- Guide header -->
     <ModuleGuideHeader guide-key="groups" eyebrow="课程与项目协作">
       <template #actions>

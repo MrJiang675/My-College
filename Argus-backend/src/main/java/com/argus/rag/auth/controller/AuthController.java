@@ -59,6 +59,26 @@ public class AuthController {
         return ApiResponse.success(AuthTokensResponse.from(tokens));
     }
 
+    private final java.util.concurrent.atomic.AtomicInteger guestCount = new java.util.concurrent.atomic.AtomicInteger();
+    private volatile long guestWindow = System.currentTimeMillis();
+    @org.springframework.beans.factory.annotation.Value("${argus.rag.auth.demo-guest-enabled:false}")
+    private boolean demoGuestEnabled;
+
+    @PostMapping("/demo-guest")
+    public synchronized ApiResponse<AuthTokensResponse> guest(HttpServletResponse response) {
+        if (!demoGuestEnabled) throw new com.argus.rag.common.exception.BusinessException("体验入口暂未开启");
+        long now = System.currentTimeMillis();
+        if (now - guestWindow >= 60000) {
+            guestWindow = now;
+            guestCount.set(0);
+        }
+        if (guestCount.incrementAndGet() > 30)
+            throw new com.argus.rag.common.exception.BusinessException("体验人数较多，请稍后再试");
+        AuthTokens tokens = authService.createDemoGuest();
+        authCookieSupport.writeRefreshTokenCookie(response, tokens.refreshToken());
+        return ApiResponse.success(AuthTokensResponse.from(tokens));
+    }
+
     /** 刷新令牌：从 Cookie 读取 refresh token，返回新的 access token 和 refresh token */
     @PostMapping("/refresh")
     public ApiResponse<AuthTokensResponse> refresh(

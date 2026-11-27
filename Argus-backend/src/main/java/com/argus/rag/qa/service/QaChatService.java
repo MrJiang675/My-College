@@ -219,9 +219,9 @@ public class QaChatService {
                                         .chatResponse();
                         String text = chatResponse.getResult().getOutput().getText();
                         UsageInfo usageInfo = extractUsageInfo(chatResponse.getMetadata().getUsage(), false);
-                        KnowledgeAnswerOutput output = objectMapper.readValue(text, KnowledgeAnswerOutput.class);
+                        KnowledgeAnswerOutput output = answerParser.parse(text);
                         return new LlmCallResult(output, usageInfo);
-                } catch (RuntimeException | JsonProcessingException exception) {
+                } catch (RuntimeException exception) {
                         log.warn(
                                         "QA structured output failed, fallback to raw content. groupId={}, evidenceCount={}",
                                         groupId,

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import http from '@/api/http'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { moduleGuides, type ModuleGuideKey } from '@/constants/moduleGuides'
 
@@ -9,6 +10,24 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
+const progress=ref({school:'',major:'',grade:'',complete:0,documents:0,entries:0})
+function updateProgress(event:Event){
+ const detail=(event as CustomEvent).detail
+ if(detail)Object.assign(progress.value,detail)
+}
+onMounted(async()=>{
+ window.addEventListener('argus:workspace-progress',updateProgress)
+ if(!authStore.isUser)return
+ try{
+  const row=(await http.get('/college/workspace')).data.data
+  const state=JSON.parse(row.payload)
+  Object.assign(progress.value,{school:state.school||'',major:state.major||'',grade:state.grade||'',entries:state.entries?.length||0,
+   complete:[state.school,state.dept,state.major,state.grade].filter(Boolean).length*25})
+  const docs=(await http.get('/documents')).data.data
+  progress.value.documents=Array.isArray(docs)?docs.filter(d=>d.status==='READY').length:0
+ }catch{/* The work area displays its own load status. */}
+})
+onUnmounted(()=>window.removeEventListener('argus:workspace-progress',updateProgress))
 const userName = computed(() => authStore.currentUser?.displayName ?? '同学')
 
 const currentTitle = computed(() => {
@@ -59,7 +78,8 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
 // ── 当前激活菜单 ──
 const activeMenu = computed(() => {
   const path = route.path
-  if (path.startsWith('/app/college')) return 'college'
+  if (path.startsWith('/app/college/')) return 'college-'+String(route.params.module)
+  if(path==='/app/college')return 'college'
   if (path.startsWith('/app/documents')) return 'documents'
   if (path.startsWith('/app/qa')) return 'qa'
   if (path.startsWith('/app/assistant')) return 'assistant'
@@ -68,68 +88,6 @@ const activeMenu = computed(() => {
   if (path.startsWith('/app/admin')) return 'admin'
   if (path.startsWith('/app/settings')) return 'settings'
   return 'college'
-})
-
-const collegeModules = [
-  { key: 'learn', label: '学习助手', path: '/app/college/learn' },
-  { key: 'practice', label: '专业实践', path: '/app/college/practice' },
-  { key: 'opps', label: '校园机会', path: '/app/college/opps' },
-  { key: 'project', label: '我的项目', path: '/app/college/project' },
-  { key: 'campus', label: '校园办事', path: '/app/college/campus' },
-  { key: 'career', label: '升学就业', path: '/app/college/career' },
-  { key: 'experience', label: '我的经历', path: '/app/college/experience' },
-] as const
-
-const activeCollegeModule = computed(() => String(route.params.module || ''))
-const collegeMenuOpen = ref(false)
-const collegeMenuPinned = ref(false)
-
-function canHoverCollegeMenu() {
-  return window.matchMedia('(hover: hover) and (pointer: fine)').matches
-}
-
-function openCollegeMenu() {
-  if (!sidebarCollapsed.value) {
-    collegeMenuOpen.value = true
-  }
-}
-
-function closeCollegeMenu() {
-  if (canHoverCollegeMenu() || !collegeMenuPinned.value) {
-    collegeMenuOpen.value = false
-  }
-}
-
-function toggleCollegeMenu() {
-  if (sidebarCollapsed.value) {
-    sidebarCollapsed.value = false
-  }
-  if (canHoverCollegeMenu()) {
-    collegeMenuPinned.value = false
-    collegeMenuOpen.value = !collegeMenuOpen.value
-    return
-  }
-  collegeMenuPinned.value = !collegeMenuPinned.value
-  collegeMenuOpen.value = collegeMenuPinned.value
-}
-
-function navigateToCollege() {
-  if (sidebarCollapsed.value) {
-    sidebarCollapsed.value = false
-  }
-  collegeMenuPinned.value = false
-  collegeMenuOpen.value = false
-  navigateTo('/app/college')
-}
-
-watch(() => route.path, (path) => {
-  if (path.startsWith('/app/college/')) {
-    collegeMenuPinned.value = !canHoverCollegeMenu()
-    collegeMenuOpen.value = true
-  } else if (!path.startsWith('/app/college')) {
-    collegeMenuPinned.value = false
-    collegeMenuOpen.value = false
-  }
 })
 
 // ── 所有菜单项定义（角色无关） ──
@@ -143,14 +101,10 @@ interface MenuItem {
 }
 
 const allMenuItems: MenuItem[] = [
-  {
-    key: 'college',
-    label: '我的大学',
-    group: '学习与实践',
-    icon: '◇',
-    path: '/app/college',
-    roles: ['USER'] as const,
-  },
+  {key:'college',label:'我的大学',group:'学习与成长',icon:'⌂',path:'/app/college',roles:['USER']},
+  ...[['learn','01 学习助手'],['practice','02 专业实践'],['opps','03 校园机会与办事'],['experience','04 我的经历'],['career','05 升学就业']].map(([key,label])=>({
+    key:'college-'+key,label:label!,group:'学习与成长',icon:'',path:'/app/college/'+key,roles:['USER']
+  })),
   {
     key: 'documents',
     label: '文档管理',
@@ -275,75 +229,18 @@ function navigateTo(path: string) {
       </div>
 
       <!-- 主导航 -->
-      <nav class="sidebar-nav">
-        <template v-for="group in menuGroups" :key="group.label">
-          <span v-show="!sidebarCollapsed" class="sidebar-nav__label">{{ group.label }}</span>
-          <template v-for="item in group.items" :key="item.key">
-            <div
-              v-if="item.key === 'college'"
-              class="nav-item college-nav-item"
-              :class="{ active: activeMenu === item.key }"
-              @mouseenter="canHoverCollegeMenu() && openCollegeMenu()"
-              @mouseleave="closeCollegeMenu"
-            >
-              <span class="nav-item__bar" />
-              <button
-                type="button"
-                class="college-nav-item__link"
-                :title="sidebarCollapsed ? item.label : undefined"
-                @click="navigateToCollege"
-              >
-                <span class="nav-icon" v-html="item.icon" />
-                <span v-show="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
-              </button>
-              <button
-                v-show="!sidebarCollapsed"
-                type="button"
-                class="college-nav-item__toggle"
-                :aria-label="collegeMenuOpen ? '收起大学子模块' : '展开大学子模块'"
-                :aria-expanded="collegeMenuOpen"
-                aria-controls="college-submenu"
-                @click="toggleCollegeMenu"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" :class="{ rotated: collegeMenuOpen }">
-                  <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </button>
-              <span v-show="!sidebarCollapsed && activeMenu === item.key" class="nav-item__dot" />
-              <transition name="college-submenu">
-                <div v-if="collegeMenuOpen && !sidebarCollapsed" id="college-submenu" class="college-submenu" aria-label="大学子模块">
-                  <button
-                    v-for="(module, index) in collegeModules"
-                    :key="module.key"
-                    type="button"
-                    class="college-submenu__item"
-                    :class="{ active: activeCollegeModule === module.key }"
-                    @click="navigateTo(module.path)"
-                  >
-                    <span class="college-submenu__index">{{ String(index + 1).padStart(2, '0') }}</span>
-                    <span class="college-submenu__label">{{ module.label }}</span>
-                    <span v-if="activeCollegeModule === module.key" class="college-submenu__dot" />
-                  </button>
-                </div>
-              </transition>
-            </div>
-            <button
-              v-else
-              type="button"
-              class="nav-item"
-              :class="{ active: activeMenu === item.key }"
-              :title="sidebarCollapsed ? item.label : undefined"
-              @click="navigateTo(item.path)"
-            >
-              <span class="nav-item__bar" />
-              <span class="nav-icon" v-html="item.icon" />
-              <span v-show="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
-              <span v-show="!sidebarCollapsed && activeMenu === item.key" class="nav-item__dot" />
-            </button>
-          </template>
-        </template>
+      <nav class="sidebar-nav" aria-label="主导航">
+        <section v-for="group in menuGroups" :key="group.label">
+          <p v-if="!sidebarCollapsed" class="sidebar-nav__label">{{group.label}}</p>
+          <a v-for="item in group.items" :key="item.key" :href="item.path" class="nav-item" :class="{'is-active':activeMenu===item.key}" :title="item.label" @click.prevent="navigateTo(item.path)">
+            <span v-if="item.icon" class="nav-icon" v-html="item.icon"></span><span v-show="!sidebarCollapsed" class="nav-text">{{item.label}}</span>
+          </a>
+        </section>
+        <section v-if="authStore.isUser&&!sidebarCollapsed" class="sidebar-progress">
+          <button @click="navigateTo('/app/college?profile=1')">{{progress.school||'完善校园档案'}} · {{progress.major||'专业待填'}} · {{progress.grade||'年级待填'}}</button>
+          <small>档案 {{progress.complete}}% · 讲义 {{progress.documents}} · 经历 {{progress.entries}}</small>
+        </section>
       </nav>
-
       <!-- 底部导航 -->
       <div v-if="bottomItems.length" class="sidebar-bottom">
         <span v-show="!sidebarCollapsed" class="sidebar-nav__label">账号与系统</span>
@@ -452,7 +349,7 @@ function navigateTo(path: string) {
 }
 
 /* ════════════ Sidebar ════════════ */
-.sidebar {
+.sidebar-progress{padding:14px;font-size:12px;border-top:1px solid var(--border-default)}.sidebar-progress button{border:0;background:transparent;color:inherit;text-align:left}.sidebar-progress small{display:block;margin-top:8px}.sidebar {
   width: 244px;
   flex-shrink: 0;
   background: var(--sidebar-background);

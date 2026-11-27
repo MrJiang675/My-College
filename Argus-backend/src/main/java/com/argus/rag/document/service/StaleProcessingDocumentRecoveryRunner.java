@@ -34,6 +34,9 @@ public class StaleProcessingDocumentRecoveryRunner implements ApplicationRunner 
 
     /** 文档数据访问 */
     private final DocumentMapper documentMapper;
+    private final long timeoutMinutes;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.argus.rag.ingestion.mapper.IngestionJobMapper jobs;
 
     /**
      * 构造启动恢复组件。
@@ -43,9 +46,10 @@ public class StaleProcessingDocumentRecoveryRunner implements ApplicationRunner 
      */
     public StaleProcessingDocumentRecoveryRunner(
             DocumentMapper documentMapper,
-            @Value("${document.ingestion.processing-timeout-minutes:30}") long staleTimeoutMinutes
+            @Value("${document.ingestion.processing-timeout-minutes:8}") long staleTimeoutMinutes
     ) {
         this.documentMapper = documentMapper;
+        this.timeoutMinutes = Math.max(1, staleTimeoutMinutes);
     }
 
     /**
@@ -55,17 +59,26 @@ public class StaleProcessingDocumentRecoveryRunner implements ApplicationRunner 
      *
      * @param args 应用启动参数
      */
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelayString = "${document.ingestion.scan-interval-ms:60000}")
+    @Transactional
+    public void scan() { recoverStale(LocalDateTime.now().minusMinutes(timeoutMinutes)); }
+
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        recoverStale(null);
+    }
+
+    private void recoverStale(LocalDateTime cutoff) {
         LocalDateTime now = LocalDateTime.now();
         int recovered = documentMapper.markStaleProcessingDocumentsFailed(
                 DocumentStatus.PROCESSING.name(),
                 DocumentStatus.FAILED.name(),
                 DEFAULT_FAILURE_REASON,
-                null,
+                cutoff,
                 now
         );
+        if(jobs!=null)jobs.failJobsForFailedDocuments();
         if (recovered > 0) {
             log.warn(
                     "启动回收遗留处理中文档: recoveredCount={}",

@@ -47,6 +47,8 @@ public class DocumentIngestionAsyncService {
 
     /** 文档数据访问 */
     private final DocumentMapper documentMapper;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.argus.rag.ingestion.mapper.IngestionJobMapper ingestionJobs;
     /** 文档分块处理引擎 */
     private final DocumentIngestionProcessor documentIngestionProcessor;
     /** 文档分块数据访问 */
@@ -98,6 +100,7 @@ public class DocumentIngestionAsyncService {
     @Transactional
     public void ingestDocument(Long documentId, Long groupId) {
         DocumentEntity document = requireDocument(documentId, groupId);
+        if (!DocumentStatus.PROCESSING.name().equals(document.getStatus())) return;
         log.info("开始异步执行文档ETL: documentId={}, groupId={}", documentId, groupId);
         cleanupProcessingArtifacts(documentId);
         documentIngestionProcessor.process(documentId, groupId);
@@ -117,7 +120,7 @@ public class DocumentIngestionAsyncService {
      * @param groupId    文档所属群组 ID
      */
     @Recover
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void recover(RuntimeException exception, Long documentId, Long groupId) {
         log.error("异步文档ETL最终失败: documentId={}, groupId={}, reason={}", documentId, groupId, exception.getMessage(), exception);
         cleanupProcessingArtifacts(documentId);
@@ -128,6 +131,7 @@ public class DocumentIngestionAsyncService {
                 truncateFailureReason(exception.getMessage()),
                 LocalDateTime.now()
         );
+        if(ingestionJobs!=null)ingestionJobs.failJobsForFailedDocuments();
     }
 
     /**
@@ -181,7 +185,8 @@ public class DocumentIngestionAsyncService {
     private void syncSearchIndex(DocumentEntity document) {
         log.info("开始同步ES搜索索引: documentId={}, fileName={}", document.getId(), document.getFileName());
         List<DocumentChunkEntity> chunks = documentChunkMapper.selectByDocumentId(document.getId());
-        elasticsearchChunkIndexService.indexReadyChunks(document.getFileName(), chunks);
+        try { elasticsearchChunkIndexService.indexReadyChunks(document.getFileName(), chunks); }
+        catch(RuntimeException unavailable){log.warn("ES 索引暂不可用，保留已经完成的向量入库");}
         log.info("ES搜索索引同步完成: documentId={}, indexedChunks={}", document.getId(), chunks.size());
     }
 
@@ -205,12 +210,13 @@ public class DocumentIngestionAsyncService {
         int updated = documentMapper.update(null, new LambdaUpdateWrapper<DocumentEntity>()
                 .eq(DocumentEntity::getId, documentId)
                 .eq(DocumentEntity::getGroupId, groupId)
+                .eq(DocumentEntity::getStatus, DocumentStatus.PROCESSING.name())
                 .set(DocumentEntity::getStatus, status)
                 .set(DocumentEntity::getFailureReason, failureReason)
                 .set(DocumentEntity::getProcessedAt, processedAt)
         );
         if (updated == 0) {
-            throw new BusinessException("文档状态更新失败");
+            log.warn("处理状态已变化，保留现有文档状态: documentId={}", documentId);
         }
     }
 
