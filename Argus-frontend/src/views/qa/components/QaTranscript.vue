@@ -52,7 +52,7 @@ watch(
   <div class="qa-transcript">
     <header class="qa-transcript__head">
       <div class="qa-transcript__head-left">
-        <span class="qa-transcript__eyebrow">Active Thread</span>
+        <span class="qa-transcript__eyebrow">当前会话</span>
         <h2 class="qa-transcript__title">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <ellipse cx="12" cy="5" rx="9" ry="3" />
@@ -111,6 +111,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .qa-transcript__eyebrow {
@@ -135,13 +136,20 @@ watch(
 }
 
 .qa-transcript__title svg {
+  flex-shrink: 0;
   color: var(--brand-primary);
+}
+
+.qa-transcript__title span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .qa-transcript__counter {
   display: flex;
   align-items: baseline;
   gap: 4px;
+  flex-shrink: 0;
 }
 
 .qa-transcript__counter-num {
@@ -157,17 +165,14 @@ watch(
   color: var(--text-muted);
 }
 
-/* Scrollable area with subtle grid paper background */
+/* Scrollable conversation area */
 .qa-transcript__scroll {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border-default) transparent;
-  background-image:
-    linear-gradient(rgba(74, 144, 217, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 144, 217, 0.04) 1px, transparent 1px);
-  background-size: 28px 28px;
-  background-position: 0 0;
+  background: var(--surface-subtle);
 }
 
 .qa-transcript__scroll::-webkit-scrollbar {
@@ -184,9 +189,12 @@ watch(
 }
 
 .qa-transcript__paper {
+  width: 100%;
   max-width: 860px;
+  min-width: 0;
   margin: 0 auto;
   padding: 8px 0 16px;
+  background: var(--surface-white);
 }
 
 @media (max-width: 720px) {
@@ -197,5 +205,18 @@ watch(
   .qa-transcript__title {
     font-size: 0.92rem;
   }
+}
+
+@media (max-width: 640px) {
+  .qa-transcript__head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 13px 12px 11px;
+  }
+
+  .qa-transcript__head-left { width: 100%; }
+  .qa-transcript__title { align-items: flex-start; line-height: 1.45; }
+  .qa-transcript__title svg { margin-top: 3px; }
 }
 </style>

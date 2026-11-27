@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DocumentItem } from '@/api/document'
+import { ElTooltip } from 'element-plus'
 
 defineProps<{
   documents: DocumentItem[]
@@ -17,6 +18,7 @@ const emit = defineEmits<{
   retry: [doc: DocumentItem]
   remove: [doc: DocumentItem]
   reload: []
+  goToQa: []
 }>()
 
 function formatFileSize(bytes: number): string {
@@ -34,18 +36,26 @@ function formatTime(iso: string): string {
 }
 
 function statusClass(status: string): string {
-  return `doc-table__status doc-table__status--${status.toLowerCase()}`
+  if (status === 'READY') return 'status-badge--ready'
+  if (status === 'FAILED') return 'status-badge--error'
+  return 'status-badge--processing'
 }
 
 function statusLabel(status: string): string {
   const map: Record<string, string> = {
-    PENDING: '待处理',
+    PENDING: '处理中',
     PROCESSING: '处理中',
-    READY: '就绪',
+    READY: 'READY 可检索',
     FAILED: '失败',
-    UPLOADED: '已上传',
+    UPLOADED: '处理中',
   }
   return map[status] ?? status
+}
+
+function statusHint(status: string): string {
+  if (status === 'READY') return '文档已解析并入库，现在可以用于知识库问答。'
+  if (status === 'FAILED') return '文档处理失败，可查看失败原因并按权限重新处理。'
+  return '文档正在解析、切分与建立索引，请稍候再刷新。'
 }
 
 function uploaderName(doc: DocumentItem): string {
@@ -106,9 +116,11 @@ function uploaderName(doc: DocumentItem): string {
             </td>
             <td class="doc-table__col-size">{{ formatFileSize(doc.fileSize) }}</td>
             <td class="doc-table__col-status">
-              <span :class="statusClass(doc.status)">
-                {{ statusLabel(doc.status) }}
-              </span>
+              <el-tooltip :content="statusHint(doc.status)" placement="top">
+                <span class="status-badge" :class="statusClass(doc.status)">
+                  {{ statusLabel(doc.status) }}
+                </span>
+              </el-tooltip>
               <span
                 v-if="doc.status === 'FAILED' && doc.failureReason"
                 class="doc-table__failure-hint"
@@ -124,6 +136,14 @@ function uploaderName(doc: DocumentItem): string {
             <td class="doc-table__col-time">{{ formatTime(doc.uploadedAt) }}</td>
             <td class="doc-table__col-actions">
               <div class="doc-table__btns">
+                <button
+                  v-if="doc.status === 'READY'"
+                  class="doc-table__btn doc-table__btn--qa"
+                  title="在当前课程小组中提问"
+                  @click="emit('goToQa')"
+                >
+                  去问答
+                </button>
                 <button
                   class="doc-table__btn"
                   title="预览"
@@ -169,6 +189,8 @@ function uploaderName(doc: DocumentItem): string {
 
 <style scoped>
 .doc-table-card {
+  width: 100%;
+  min-width: 0;
   background: var(--surface-white);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
@@ -199,6 +221,7 @@ function uploaderName(doc: DocumentItem): string {
 .doc-table-card__title {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 10px;
   margin: 0;
   font-family: 'Poppins', 'Noto Sans SC', sans-serif;
@@ -263,6 +286,7 @@ function uploaderName(doc: DocumentItem): string {
 }
 
 .doc-table-card__scroll {
+  max-width: 100%;
   overflow-x: auto;
 }
 
@@ -270,7 +294,7 @@ function uploaderName(doc: DocumentItem): string {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.86rem;
-  min-width: 780px;
+  min-width: 900px;
 }
 
 .doc-table th {
@@ -308,10 +332,10 @@ function uploaderName(doc: DocumentItem): string {
 
 .doc-table__col-name { min-width: 240px; }
 .doc-table__col-size { width: 80px; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--text-secondary); }
-.doc-table__col-status { width: 130px; }
+.doc-table__col-status { width: 150px; }
 .doc-table__col-uploader { width: 110px; color: var(--text-secondary); }
 .doc-table__col-time { width: 160px; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--text-secondary); }
-.doc-table__col-actions { width: 200px; }
+.doc-table__col-actions { width: 250px; }
 
 .doc-table__file {
   display: flex;
@@ -352,54 +376,6 @@ function uploaderName(doc: DocumentItem): string {
   flex-shrink: 0;
 }
 
-/* Status pills */
-.doc-table__status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: 100px;
-  font-size: 0.74rem;
-  font-weight: 600;
-  white-space: nowrap;
-  letter-spacing: 0.01em;
-}
-
-.doc-table__status::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.doc-table__status--ready {
-  color: #059669;
-  background: rgba(16, 185, 129, 0.1);
-}
-
-.doc-table__status--processing {
-  color: #b45309;
-  background: rgba(245, 158, 11, 0.12);
-  animation: status-pulse 1.8s ease-in-out infinite;
-}
-
-@keyframes status-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-.doc-table__status--failed {
-  color: #dc2626;
-  background: rgba(239, 68, 68, 0.1);
-}
-
-.doc-table__status--pending,
-.doc-table__status--uploaded {
-  color: #64748b;
-  background: rgba(148, 163, 184, 0.12);
-}
-
 .doc-table__failure-hint {
   display: inline-flex;
   align-items: center;
@@ -436,19 +412,31 @@ function uploaderName(doc: DocumentItem): string {
   border-color: var(--brand-primary);
 }
 
+.doc-table__btn--qa {
+  color: #fff;
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+}
+
+.doc-table__btn--qa:hover:not(:disabled) {
+  color: #fff;
+  background: var(--brand-primary-dark);
+  border-color: var(--brand-primary-dark);
+}
+
 .doc-table__btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
 .doc-table__btn--warn {
-  color: #b45309;
-  border-color: rgba(245, 158, 11, 0.25);
+  color: var(--brand-primary);
+  border-color: rgba(74, 144, 217, 0.22);
 }
 
 .doc-table__btn--warn:hover:not(:disabled) {
-  background: rgba(245, 158, 11, 0.08);
-  border-color: #f59e0b;
+  background: var(--surface-accent);
+  border-color: var(--brand-primary);
 }
 
 .doc-table__btn--danger {
@@ -459,5 +447,10 @@ function uploaderName(doc: DocumentItem): string {
 .doc-table__btn--danger:hover:not(:disabled) {
   background: rgba(239, 68, 68, 0.06);
   border-color: var(--el-color-danger);
+}
+
+@media (max-width: 640px) {
+  .doc-table-card__head { padding: 16px 18px 12px; }
+  .doc-table-card__notice { padding: 10px 18px; }
 }
 </style>

@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
+import { useTheme } from '@/composables/useTheme'
+import { apiBaseUrl, backendUnavailableMessage } from '@/api/http'
 
 const authStore = useAuthStore()
+useTheme()
 </script>
 
 <template>
+  <p v-if="!apiBaseUrl" class="deployment-notice" role="status">{{ backendUnavailableMessage }}</p>
   <div v-if="authStore.isBootstrapping" class="bootstrap-overlay">
     <div class="bootstrap-spinner">
       <svg width="48" height="48" viewBox="0 0 32 32" fill="none" class="spinner-svg">
@@ -27,6 +31,24 @@ const authStore = useAuthStore()
 </template>
 
 <style>
+.deployment-notice {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  padding: 12px 18px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-white);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+  text-align: center;
+}
+
 .bootstrap-overlay {
   position: fixed;
   inset: 0;

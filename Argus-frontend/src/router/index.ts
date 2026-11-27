@@ -8,8 +8,8 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('../views/college/Landing.vue'),
-      meta: { title: 'Argus · 我的大学' },
+      component: () => import('../views/HomeView.vue'),
+      meta: { title: '数据洞察中心' },
     },
     {
       path: '/login',
@@ -24,7 +24,7 @@ const router = createRouter({
       component: () => import('../layouts/DefaultLayout.vue'),
       redirect: '/app/college',
       children: [
-        {path: 'college/:module?', name: 'college', component: () => import('../views/college/CollegeView.vue'), meta: {title: '我的大学 · Argus'}},
+        { path: 'college/:module?', name: 'college', component: () => import('../views/college/CollegeView.vue'), meta: { title: '我的大学 · Argus' } },
 
         {
           path: 'documents',

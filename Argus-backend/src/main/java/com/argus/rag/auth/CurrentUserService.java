@@ -65,7 +65,8 @@ public class CurrentUserService {
                 user.userCode(),
                 user.displayName(),
                 user.systemRole(),
-                user.mustChangePassword()
+                user.mustChangePassword(),
+                user.passwordEnabled()
         );
     }
 
@@ -75,10 +76,11 @@ public class CurrentUserService {
             String userCode,
             String displayName,
             SystemRole systemRole,
-            boolean mustChangePassword
+            boolean mustChangePassword,
+            boolean passwordEnabled
     ) {
         public CurrentUser(Long userId, String userCode, String displayName) {
-            this(userId, userCode, displayName, SystemRole.USER, false);
+            this(userId, userCode, displayName, SystemRole.USER, false, true);
         }
     }
 }

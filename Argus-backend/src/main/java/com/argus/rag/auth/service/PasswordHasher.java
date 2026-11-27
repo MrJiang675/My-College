@@ -5,6 +5,14 @@ package com.argus.rag.auth.service;
  */
 public interface PasswordHasher {
 
+    String PASSWORDLESS_HASH = "{no-password}";
+
+    static boolean isPasswordEnabled(String passwordHash) {
+        return passwordHash != null
+                && !passwordHash.isBlank()
+                && !PASSWORDLESS_HASH.equals(passwordHash);
+    }
+
     /** 对明文密码做哈希 */
     String hash(String rawPassword);
 

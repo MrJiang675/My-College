@@ -40,16 +40,11 @@ function handleInvite() {
   inviteUserId.value = ''
 }
 
-function ownerName(userId: number, members: GroupMemberItem[]): string {
-  const owner = members.find((m) => m.userId === userId && m.role === 'OWNER')
-  return owner?.displayName ?? `用户 #${userId}`
-}
-
 async function copyGroupCode(code: string) {
   try {
     await navigator.clipboard.writeText(code)
     ElMessage.success('组织 ID 已复制到剪贴板')
-  } catch (err) {
+  } catch {
     ElMessage.error('复制失败，请手动复制')
   }
 }

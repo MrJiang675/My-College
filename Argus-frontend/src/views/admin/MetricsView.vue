@@ -9,6 +9,7 @@ import {
   type UsageRankItem,
 } from '@/api/metrics'
 import { extractApiError } from '@/api/http'
+import ModuleGuideHeader from '@/components/ModuleGuideHeader.vue'
 
 // ── 时间段选项 ──
 const periodOptions: { label: string; value: Period }[] = [
@@ -50,16 +51,10 @@ function formatDate(dateStr: string): string {
 
 // ── 用户头像颜色 ──
 const AVATAR_COLORS = [
-  'linear-gradient(135deg, #f59e0b, #ea580c)',
-  'linear-gradient(135deg, #64748b, #475569)',
-  'linear-gradient(135deg, #f97316, #ea580c)',
-  'linear-gradient(135deg, #3b82f6, #2563eb)',
-  'linear-gradient(135deg, #8b5cf6, #6d28d9)',
-  'linear-gradient(135deg, #14b8a6, #0d9488)',
-  'linear-gradient(135deg, #ec4899, #db2777)',
-  'linear-gradient(135deg, #06b6d4, #0891b2)',
-  'linear-gradient(135deg, #84cc16, #65a30d)',
-  'linear-gradient(135deg, #f43f5e, #e11d48)',
+  'linear-gradient(135deg, #4A90D9, #3A7BC8)',
+  'linear-gradient(135deg, #7AB8F5, #4A90D9)',
+  'linear-gradient(135deg, #3A7BC8, #2563A6)',
+  'linear-gradient(135deg, #93C5F8, #4A90D9)',
 ]
 
 function getAvatarColor(index: number): string {
@@ -180,11 +175,8 @@ onMounted(() => {
 
 <template>
   <div class="metrics-page">
-    <!-- 页头 -->
-    <div class="page-header">
-      <h1>使用统计</h1>
-      <p>LLM 调用量、Token 消耗与费用分析</p>
-    </div>
+    <!-- 页头与使用说明 -->
+    <ModuleGuideHeader guide-key="admin-metrics" eyebrow="系统管理" />
 
     <!-- 错误提示 -->
     <div v-if="errorMsg" class="error-banner">
@@ -277,12 +269,12 @@ onMounted(() => {
             <svg viewBox="0 0 900 220" preserveAspectRatio="none" class="trend-svg">
               <defs>
                 <linearGradient id="trendGradBlue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.25" />
-                  <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.02" />
+                  <stop offset="0%" stop-color="#4A90D9" stop-opacity="0.25" />
+                  <stop offset="100%" stop-color="#4A90D9" stop-opacity="0.02" />
                 </linearGradient>
                 <linearGradient id="trendGradTeal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#14b8a6" stop-opacity="0.25" />
-                  <stop offset="100%" stop-color="#14b8a6" stop-opacity="0.02" />
+                  <stop offset="0%" stop-color="#7AB8F5" stop-opacity="0.25" />
+                  <stop offset="100%" stop-color="#7AB8F5" stop-opacity="0.02" />
                 </linearGradient>
               </defs>
               <!-- 网格线 -->
@@ -298,22 +290,22 @@ onMounted(() => {
               <!-- 折线 -->
               <polyline
                 :points="trendChart.requestPoints"
-                fill="none" stroke="#3b82f6" stroke-width="2"
+                fill="none" stroke="#4A90D9" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round"
               />
               <polyline
                 :points="trendChart.tokenPoints"
-                fill="none" stroke="#14b8a6" stroke-width="2"
+                fill="none" stroke="#7AB8F5" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round"
               />
               <!-- 末端圆点 -->
               <circle
                 :cx="trendChart.lastX" :cy="trendChart.lastYRequest" r="4"
-                fill="#fff" stroke="#3b82f6" stroke-width="2.5"
+                fill="#fff" stroke="#4A90D9" stroke-width="2.5"
               />
               <circle
                 :cx="trendChart.lastX" :cy="trendChart.lastYToken" r="4"
-                fill="#fff" stroke="#14b8a6" stroke-width="2.5"
+                fill="#fff" stroke="#7AB8F5" stroke-width="2.5"
               />
             </svg>
             <!-- X 轴标签 -->
@@ -355,35 +347,37 @@ onMounted(() => {
         <div v-if="loadingRank" class="loading-inline">
           <span>加载中...</span>
         </div>
-        <table v-else-if="userRank.length > 0" class="rank-table">
-          <thead>
-            <tr>
-              <th class="rank-num-col">#</th>
-              <th>用户</th>
-              <th class="num-col">调用次数</th>
-              <th class="num-col">Token</th>
-              <th class="num-col">费用</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(item, idx) in userRank" :key="item.id">
-              <td class="rank-num-col">
-                <span class="rank-badge" :class="getRankBadgeClass(idx)">{{ idx + 1 }}</span>
-              </td>
-              <td class="name-col">
-                <div class="user-chip">
-                  <span class="user-chip__avatar" :style="{ background: getAvatarColor(idx) }">
-                    {{ getInitial(item.name) }}
-                  </span>
-                  <span class="user-chip__name">{{ item.name }}</span>
-                </div>
-              </td>
-              <td class="num-col">{{ formatNumber(item.totalRequests) }}</td>
-              <td class="num-col">{{ formatNumber(item.totalTokens) }}</td>
-              <td class="num-col num-col--cost">{{ formatCost(item.totalCost) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else-if="userRank.length > 0" class="rank-table-scroll">
+          <table class="rank-table">
+            <thead>
+              <tr>
+                <th class="rank-num-col">#</th>
+                <th>用户</th>
+                <th class="num-col">调用次数</th>
+                <th class="num-col">Token</th>
+                <th class="num-col">费用</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(item, idx) in userRank" :key="item.id">
+                <td class="rank-num-col">
+                  <span class="rank-badge" :class="getRankBadgeClass(idx)">{{ idx + 1 }}</span>
+                </td>
+                <td class="name-col">
+                  <div class="user-chip">
+                    <span class="user-chip__avatar" :style="{ background: getAvatarColor(idx) }">
+                      {{ getInitial(item.name) }}
+                    </span>
+                    <span class="user-chip__name">{{ item.name }}</span>
+                  </div>
+                </td>
+                <td class="num-col">{{ formatNumber(item.totalRequests) }}</td>
+                <td class="num-col">{{ formatNumber(item.totalTokens) }}</td>
+                <td class="num-col num-col--cost">{{ formatCost(item.totalCost) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div v-else class="empty-state">
           <p>暂无用户排行数据</p>
         </div>
@@ -410,28 +404,30 @@ onMounted(() => {
         <div v-if="loadingRank" class="loading-inline">
           <span>加载中...</span>
         </div>
-        <table v-else-if="groupRank.length > 0" class="rank-table">
-          <thead>
-            <tr>
-              <th class="rank-num-col">#</th>
-              <th>群组</th>
-              <th class="num-col">调用次数</th>
-              <th class="num-col">Token</th>
-              <th class="num-col">费用</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(item, idx) in groupRank" :key="item.id">
-              <td class="rank-num-col">
-                <span class="rank-badge" :class="getRankBadgeClass(idx)">{{ idx + 1 }}</span>
-              </td>
-              <td class="name-col">{{ item.name }}</td>
-              <td class="num-col">{{ formatNumber(item.totalRequests) }}</td>
-              <td class="num-col">{{ formatNumber(item.totalTokens) }}</td>
-              <td class="num-col num-col--cost">{{ formatCost(item.totalCost) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div v-else-if="groupRank.length > 0" class="rank-table-scroll">
+          <table class="rank-table">
+            <thead>
+              <tr>
+                <th class="rank-num-col">#</th>
+                <th>群组</th>
+                <th class="num-col">调用次数</th>
+                <th class="num-col">Token</th>
+                <th class="num-col">费用</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(item, idx) in groupRank" :key="item.id">
+                <td class="rank-num-col">
+                  <span class="rank-badge" :class="getRankBadgeClass(idx)">{{ idx + 1 }}</span>
+                </td>
+                <td class="name-col">{{ item.name }}</td>
+                <td class="num-col">{{ formatNumber(item.totalRequests) }}</td>
+                <td class="num-col">{{ formatNumber(item.totalTokens) }}</td>
+                <td class="num-col num-col--cost">{{ formatCost(item.totalCost) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div v-else class="empty-state">
           <p>暂无群组排行数据</p>
         </div>
@@ -441,21 +437,10 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* ── 页头 ── */
-.page-header {
-  margin-bottom: 32px;
-}
-.page-header h1 {
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--text-primary);
-  letter-spacing: -0.02em;
-  margin-bottom: 4px;
-}
-.page-header p {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: 0;
+/* ── 页面布局 ── */
+.metrics-page {
+  width: 100%;
+  min-width: 0;
 }
 
 /* ── 错误提示 ── */
@@ -470,6 +455,8 @@ onMounted(() => {
   color: #dc2626;
   font-size: 14px;
   font-weight: 500;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
   margin-bottom: 24px;
 }
 .error-banner svg {
@@ -480,13 +467,14 @@ onMounted(() => {
 /* ── KPI 卡片网格 ── */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
   margin-bottom: 28px;
 }
 
 .kpi-card {
   position: relative;
+  min-width: 0;
   background: var(--surface-white);
   border-radius: 16px;
   padding: 24px;
@@ -510,17 +498,11 @@ onMounted(() => {
   height: 3px;
   border-radius: 3px;
 }
-.kpi-card--blue::after {
-  background: linear-gradient(90deg, #3b82f6, #60a5fa);
-}
-.kpi-card--teal::after {
-  background: linear-gradient(90deg, #14b8a6, #5eead4);
-}
-.kpi-card--amber::after {
-  background: linear-gradient(90deg, #f59e0b, #fbbf24);
-}
+.kpi-card--blue::after,
+.kpi-card--teal::after,
+.kpi-card--amber::after,
 .kpi-card--green::after {
-  background: linear-gradient(90deg, #22c55e, #4ade80);
+  background: linear-gradient(90deg, var(--brand-primary), var(--brand-primary-light));
 }
 
 .kpi-card__icon {
@@ -532,21 +514,12 @@ onMounted(() => {
   justify-content: center;
   margin-bottom: 16px;
 }
-.kpi-card--blue .kpi-card__icon {
-  background: #eff6ff;
-  color: #3b82f6;
-}
-.kpi-card--teal .kpi-card__icon {
-  background: #f0fdfa;
-  color: #14b8a6;
-}
-.kpi-card--amber .kpi-card__icon {
-  background: #fffbeb;
-  color: #f59e0b;
-}
+.kpi-card--blue .kpi-card__icon,
+.kpi-card--teal .kpi-card__icon,
+.kpi-card--amber .kpi-card__icon,
 .kpi-card--green .kpi-card__icon {
-  background: #f0fdf4;
-  color: #22c55e;
+  background: var(--surface-accent);
+  color: var(--brand-primary);
 }
 
 .kpi-card__label {
@@ -561,12 +534,13 @@ onMounted(() => {
   color: var(--text-primary);
   letter-spacing: -0.02em;
   margin-top: 4px;
+  overflow-wrap: anywhere;
 }
 
 /* ── 加载骨架 ── */
 .loading-placeholder {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
   margin-bottom: 28px;
 }
@@ -590,14 +564,17 @@ onMounted(() => {
 
 /* ── 通用区域卡片 ── */
 .section-card {
+  min-width: 0;
   background: var(--surface-white);
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
   padding: 28px 32px;
   margin-bottom: 24px;
 }
 .section-card__header {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: 24px;
@@ -637,10 +614,10 @@ onMounted(() => {
   flex-shrink: 0;
 }
 .trend-legend__dot--blue {
-  background: #3b82f6;
+  background: #4A90D9;
 }
 .trend-legend__dot--teal {
-  background: #14b8a6;
+  background: #7AB8F5;
 }
 
 .trend-chart-body {
@@ -661,6 +638,7 @@ onMounted(() => {
 
 .trend-svg-wrap {
   flex: 1;
+  min-width: 0;
   position: relative;
 }
 .trend-svg {
@@ -689,12 +667,15 @@ onMounted(() => {
   display: flex;
   gap: 4px;
   margin-bottom: 20px;
-  background: #f1f5f9;
+  background: var(--surface-accent);
   border-radius: 10px;
   padding: 4px;
   width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
 }
 .period-tab {
+  flex-shrink: 0;
   padding: 7px 16px;
   font-size: 13px;
   font-weight: 500;
@@ -711,20 +692,27 @@ onMounted(() => {
 }
 .period-tab.active {
   background: #fff;
-  color: #3b82f6;
+  color: var(--brand-primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 /* ── 排行区域 ── */
 .rank-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
 }
 
 /* ── 排行表格 ── */
+.rank-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .rank-table {
   width: 100%;
+  min-width: 560px;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -736,19 +724,19 @@ onMounted(() => {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid var(--border-default);
   white-space: nowrap;
 }
 .rank-table td {
   padding: 14px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--border-subtle);
   color: var(--text-primary);
 }
 .rank-table tbody tr {
   transition: background 0.15s;
 }
 .rank-table tbody tr:hover {
-  background: #f8fafc;
+  background: var(--surface-accent);
 }
 .rank-table tbody tr:last-child td {
   border-bottom: none;
@@ -786,19 +774,22 @@ onMounted(() => {
   border-radius: 8px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--text-muted);
-  background: #f1f5f9;
+  color: var(--text-secondary);
+  background: var(--surface-muted);
+}
+.rank-badge--gold,
+.rank-badge--silver,
+.rank-badge--bronze {
+  background: var(--surface-accent);
+  color: var(--brand-primary);
+  border: 1px solid rgba(74, 144, 217, 0.2);
 }
 .rank-badge--gold {
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  background: var(--brand-primary);
   color: #fff;
 }
 .rank-badge--silver {
-  background: linear-gradient(135deg, #94a3b8, #64748b);
-  color: #fff;
-}
-.rank-badge--bronze {
-  background: linear-gradient(135deg, #f97316, #ea580c);
+  background: var(--brand-primary-light);
   color: #fff;
 }
 
@@ -846,13 +837,13 @@ onMounted(() => {
 /* ── 响应式 ── */
 @media (max-width: 1024px) {
   .kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .loading-placeholder {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .rank-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -866,6 +857,7 @@ onMounted(() => {
   .kpi-card__value {
     font-size: 24px;
   }
+  .kpi-card { padding: 20px; }
   .trend-svg {
     height: 160px;
   }

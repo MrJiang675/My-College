@@ -21,7 +21,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:106.14.125.122}:${DB_PORT:5432}/${DB_NAME:argus_rag}
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:}
+    password: ${DB_PASSWORD:set-real-password-via-env}
     driver-class-name: org.postgresql.Driver
 
   # ──────────────────────────────────────────────
@@ -32,16 +32,16 @@ spring:
 #      chat: openai
 #      embedding: openai
     dashscope:
-      api-key: ${DASHSCOPE_API_KEY:}
+      api-key: ${DASHSCOPE_API_KEY:sk-dummy-key-for-startup}
     zhipuai:
       # 真实 key 通过环境变量 ZHIPUAI_API_KEY 注入，不写入仓库
-      api-key: ${ZHIPUAI_API_KEY:}
+      api-key: ${ZHIPUAI_API_KEY:set-real-key-via-env}
 #      base-url: ${OPENAI_BASE_URL:https://open.bigmodel.cn/api/paas/v4/}
       chat:
         options:
           model: glm-4-flash
       #openai:
-      #api-key: ${OPENAI_API_KEY:}
+      #api-key: ${OPENAI_API_KEY:your-openai-compatible-api-key}
       #base-url: ${OPENAI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
       embedding:
         options:
@@ -86,19 +86,19 @@ spring:
 storage:
   minio:
     endpoint: ${MINIO_ENDPOINT:http://106.14.125.122:9000}
-    access-key: ${MINIO_ACCESS_KEY:}
-    secret-key: ${MINIO_SECRET_KEY:}
+    access-key: ${MINIO_ACCESS_KEY:set-real-key-via-env}
+    secret-key: ${MINIO_SECRET_KEY:set-real-key-via-env}
     bucket: ${MINIO_BUCKET:argus-rag-documents}
 
 argus:
   rag:
     auth:
-      jwt-secret: ${ARGUS_RAG_JWT_SECRET:}
+      jwt-secret: ${ARGUS_RAG_JWT_SECRET:set-real-jwt-secret-via-env-minimum-32-bytes}
       issuer: argus-rag
       access-token-expire-minutes: 30
       refresh-token-expire-days: 14
       # 仅开发环境兜底，生产环境仍应显式配置安全密钥。
-      #    jwt-secret: ${ARGUS_RAG_JWT_SECRET:}
+      #    jwt-secret: ${ARGUS_RAG_JWT_SECRET:set-real-jwt-secret-via-env-minimum-32-bytes}
       refresh-cookie-name: ARGUS_RAG_REFRESH_TOKEN
       # 本地 HTTP 使用 Lax；跨站 HTTPS 部署须同时指定 None 与 Secure=true。
       refresh-cookie-same-site: ${ARGUS_RAG_AUTH_REFRESH_COOKIE_SAME_SITE:Lax}
@@ -107,7 +107,7 @@ argus:
       username: ${ARGUS_RAG_DEV_ADMIN_USERNAME:argus_admin}
       email: ${ARGUS_RAG_DEV_ADMIN_EMAIL:test@test.com}
       display-name: ${ARGUS_RAG_DEV_ADMIN_DISPLAY_NAME:Bruce}
-      password: ${ARGUS_RAG_DEV_ADMIN_PASSWORD:}
+      password: ${ARGUS_RAG_DEV_ADMIN_PASSWORD:set-real-password-via-env}
       user-code: ${ARGUS_RAG_DEV_ADMIN_USER_CODE:ROOT001}
 
 elasticsearch:

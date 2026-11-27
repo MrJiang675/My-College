@@ -11,7 +11,8 @@ public record CurrentUserProfileResponse(
         String userCode,
         String displayName,
         SystemRole systemRole,
-        boolean mustChangePassword
+        boolean mustChangePassword,
+        boolean passwordEnabled
 ) {
 
     public static CurrentUserProfileResponse from(CurrentUserService.CurrentUser currentUser) {
@@ -20,7 +21,8 @@ public record CurrentUserProfileResponse(
                 currentUser.userCode(),
                 currentUser.displayName(),
                 currentUser.systemRole(),
-                currentUser.mustChangePassword()
+                currentUser.mustChangePassword(),
+                currentUser.passwordEnabled()
         );
     }
 }

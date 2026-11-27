@@ -33,7 +33,7 @@ interface ApiErrorPayload {
 /**
  * 全局 HTTP 客户端实例（基于 Axios）
  *
- * - baseURL：优先读取环境变量 VITE_API_BASE_URL，默认为 /api
+ * - baseURL：由 Vite 统一注入；开发默认 /api，生产未配置时不发送请求
  * - timeout：15 秒
  * - withCredentials：true（支持跨域携带 Cookie，用于 Refresh Token 自动传递）
  *
@@ -43,10 +43,25 @@ interface ApiErrorPayload {
  * const { data } = await http.get('/some/path')
  * ```
  */
+export const apiBaseUrl: string = import.meta.env.VITE_API_BASE_URL ?? ''
+export const backendUnavailableMessage = '当前仅提供前端预览，后端尚未接入，登录、上传和 AI 对话暂不可用。'
+
+export function requireApiBaseUrl(): string {
+  if (!apiBaseUrl) {
+    throw new Error(backendUnavailableMessage)
+  }
+  return apiBaseUrl
+}
+
 const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api',
+  baseURL: apiBaseUrl,
   timeout: 15000,
   withCredentials: true,
+})
+
+http.interceptors.request.use((config) => {
+  requireApiBaseUrl()
+  return config
 })
 
 // ─────────────────────────────────────────────

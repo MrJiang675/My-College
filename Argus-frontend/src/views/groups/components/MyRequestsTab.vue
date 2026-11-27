@@ -49,7 +49,7 @@ function formatDate(dateStr?: string) {
     <div v-if="items.length === 0 && sentInvitations.length === 0">
       <EmptyState
         title="暂无申请或邀请记录"
-        description="你还没有申请加入任何小组，也没有发出过邀请。点击上方按钮开始协作吧。"
+        description="你还没有申请加入课程组或项目组，也没有发出成员邀请。可从上方创建或加入小组开始。"
       />
     </div>
 
@@ -152,6 +152,7 @@ function formatDate(dateStr?: string) {
 
 <style scoped>
 .requests-container {
+  min-width: 0;
   padding: 8px 4px;
   animation: fadeIn 0.5s ease-out;
 }
@@ -170,6 +171,7 @@ function formatDate(dateStr?: string) {
 .section-block {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 20px;
 }
 
@@ -195,13 +197,13 @@ function formatDate(dateStr?: string) {
 }
 
 .section-icon.blue {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background: var(--surface-accent);
+  color: var(--brand-primary);
 }
 
 .section-icon.purple {
-  background: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
+  background: var(--surface-accent);
+  color: var(--brand-primary);
 }
 
 .section-title {
@@ -222,17 +224,17 @@ function formatDate(dateStr?: string) {
 
 /* Glass Table Styles */
 .glass-table-container {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  max-width: 100%;
+  background: var(--surface-white);
   border: 1px solid var(--border-default);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
 }
 
 .glass-table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   text-align: left;
 }
@@ -273,7 +275,7 @@ function formatDate(dateStr?: string) {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark));
   color: white;
   display: flex;
   align-items: center;
@@ -312,22 +314,28 @@ function formatDate(dateStr?: string) {
 }
 
 .status-pending {
-  background: rgba(245, 158, 11, 0.1);
-  color: #d97706;
+  background: var(--status-processing-bg);
+  color: var(--status-processing);
 }
 
 .status-success {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  background: var(--status-ready-bg);
+  color: var(--status-ready);
 }
 
 .status-danger {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  background: var(--status-error-bg);
+  color: var(--status-error);
 }
 
 .status-muted {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--surface-muted);
   color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .requests-container { padding-inline: 0; }
+  .list-content { gap: 36px; }
+  .section-title { font-size: 1rem; }
 }
 </style>

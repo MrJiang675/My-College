@@ -287,7 +287,7 @@ MinIO 的访问凭证需要妥善配置：
 - `MINIO_ROOT_USER`：访问密钥（建议使用较长的随机字符串）
 - `MINIO_ROOT_PASSWORD`：密钥密码
 
-默认的 `minioadmin/minioadmin` 凭证仅适用于开发测试环境，生产部署务必修改。
+默认的 `set-real-key-via-env/set-real-key-via-env` 凭证仅适用于开发测试环境，生产部署务必修改。
 
 ### 4.2 创建必要的数据目录
 

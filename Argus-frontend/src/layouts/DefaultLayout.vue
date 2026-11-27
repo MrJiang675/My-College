@@ -1,13 +1,31 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import ThemeToggle from '@/components/ThemeToggle.vue'
+import { moduleGuides, type ModuleGuideKey } from '@/constants/moduleGuides'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-const userName = computed(() => authStore.currentUser?.displayName ?? '用户')
+const userName = computed(() => authStore.currentUser?.displayName ?? '同学')
+
+const currentTitle = computed(() => {
+  if (route.path.startsWith('/app/college')) {
+    const moduleKey = String(route.params.module || 'college') as ModuleGuideKey
+    return moduleGuides[moduleKey]?.title ?? '我的大学'
+  }
+  return (route.meta.title as string) || 'Argus 学生工作台'
+})
+
+function askAssistant() {
+  if (route.path.startsWith('/app/college')) {
+    window.dispatchEvent(new CustomEvent('argus:open-context-assistant'))
+    return
+  }
+  router.push('/app/assistant')
+}
 
 // ── 侧边栏折叠 ──
 const sidebarCollapsed = ref(window.matchMedia('(max-width: 768px)').matches)
@@ -20,10 +38,6 @@ const showUserMenu = ref(false)
 
 function toggleUserMenu() {
   showUserMenu.value = !showUserMenu.value
-}
-
-function closeUserMenu() {
-  showUserMenu.value = false
 }
 
 async function handleLogout() {
@@ -45,7 +59,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick))
 // ── 当前激活菜单 ──
 const activeMenu = computed(() => {
   const path = route.path
-  if(path.startsWith('/app/college')) return 'college-' + (route.params.module || '')
+  if (path.startsWith('/app/college')) return 'college'
   if (path.startsWith('/app/documents')) return 'documents'
   if (path.startsWith('/app/qa')) return 'qa'
   if (path.startsWith('/app/assistant')) return 'assistant'
@@ -53,18 +67,94 @@ const activeMenu = computed(() => {
   if (path.startsWith('/app/admin/metrics')) return 'metrics'
   if (path.startsWith('/app/admin')) return 'admin'
   if (path.startsWith('/app/settings')) return 'settings'
-  return 'groups'
+  return 'college'
+})
+
+const collegeModules = [
+  { key: 'learn', label: '学习助手', path: '/app/college/learn' },
+  { key: 'practice', label: '专业实践', path: '/app/college/practice' },
+  { key: 'opps', label: '校园机会', path: '/app/college/opps' },
+  { key: 'project', label: '我的项目', path: '/app/college/project' },
+  { key: 'campus', label: '校园办事', path: '/app/college/campus' },
+  { key: 'career', label: '升学就业', path: '/app/college/career' },
+  { key: 'experience', label: '我的经历', path: '/app/college/experience' },
+] as const
+
+const activeCollegeModule = computed(() => String(route.params.module || ''))
+const collegeMenuOpen = ref(false)
+const collegeMenuPinned = ref(false)
+
+function canHoverCollegeMenu() {
+  return window.matchMedia('(hover: hover) and (pointer: fine)').matches
+}
+
+function openCollegeMenu() {
+  if (!sidebarCollapsed.value) {
+    collegeMenuOpen.value = true
+  }
+}
+
+function closeCollegeMenu() {
+  if (canHoverCollegeMenu() || !collegeMenuPinned.value) {
+    collegeMenuOpen.value = false
+  }
+}
+
+function toggleCollegeMenu() {
+  if (sidebarCollapsed.value) {
+    sidebarCollapsed.value = false
+  }
+  if (canHoverCollegeMenu()) {
+    collegeMenuPinned.value = false
+    collegeMenuOpen.value = !collegeMenuOpen.value
+    return
+  }
+  collegeMenuPinned.value = !collegeMenuPinned.value
+  collegeMenuOpen.value = collegeMenuPinned.value
+}
+
+function navigateToCollege() {
+  if (sidebarCollapsed.value) {
+    sidebarCollapsed.value = false
+  }
+  collegeMenuPinned.value = false
+  collegeMenuOpen.value = false
+  navigateTo('/app/college')
+}
+
+watch(() => route.path, (path) => {
+  if (path.startsWith('/app/college/')) {
+    collegeMenuPinned.value = !canHoverCollegeMenu()
+    collegeMenuOpen.value = true
+  } else if (!path.startsWith('/app/college')) {
+    collegeMenuPinned.value = false
+    collegeMenuOpen.value = false
+  }
 })
 
 // ── 所有菜单项定义（角色无关） ──
-const allMenuItems = [
-  ...[['','我的大学'],['learn','学习助手'],['practice','专业实践'],['opps','校园机会'],['project','我的项目'],['career','升学就业'],['campus','校园办事']].map(([key,label]) => ({
-    key: 'college-' + key, label, icon: '◇', path: '/app/college' + (key ? '/' + key : ''), roles: ['USER'] as const
-  })),
+interface MenuItem {
+  key: string
+  label: string
+  group?: string
+  icon: string
+  path: string
+  roles: readonly string[]
+}
 
+const allMenuItems: MenuItem[] = [
+  {
+    key: 'college',
+    label: '我的大学',
+    group: '学习与实践',
+    icon: '◇',
+    path: '/app/college',
+    roles: ['USER'] as const,
+  },
   {
     key: 'documents',
     label: '文档管理',
+    group: '资源与协作',
     icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M14 2H7C5.89543 2 5 2.89543 5 4V20C5 21.1046 5.89543 22 7 22H17C18.1046 22 19 21.1046 19 20V7L14 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 2V7H19" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
     path: '/app/documents',
     roles: ['USER'] as const,
@@ -72,6 +162,7 @@ const allMenuItems = [
   {
     key: 'qa',
     label: '知识库问答',
+    group: '资源与协作',
     icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M19 19L16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
     path: '/app/qa',
     roles: ['USER'] as const,
@@ -79,6 +170,7 @@ const allMenuItems = [
   {
     key: 'assistant',
     label: 'AI 助手',
+    group: '资源与协作',
     icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 12C8.5 10.067 10.067 8.5 12 8.5C13.933 8.5 15.5 10.067 15.5 12C15.5 13.933 13.933 15.5 12 15.5C10.067 15.5 8.5 13.933 8.5 12Z" stroke="currentColor" stroke-width="1.5"/><path d="M18.5 8.5L20 7M5.5 8.5L4 7M18.5 15.5L20 17M5.5 15.5L4 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
     path: '/app/assistant',
     roles: ['USER'] as const,
@@ -86,6 +178,7 @@ const allMenuItems = [
   {
     key: 'groups',
     label: '协作小组',
+    group: '资源与协作',
     icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="16" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 20V19C2 16.7909 3.79086 15 6 15H10C12.2091 15 14 16.7909 14 19V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 15H16C18.2091 15 20 16.7909 20 19V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
     path: '/app/groups',
     roles: ['USER'] as const,
@@ -100,7 +193,21 @@ const menuItems = computed(() =>
   }),
 )
 
-const allBottomItems = [
+const menuGroups = computed(() => {
+  const groups: { label: string; items: MenuItem[] }[] = []
+  for (const item of menuItems.value) {
+    const group = item.group ?? '资源与协作'
+    const existing = groups.find((entry) => entry.label === group)
+    if (existing) {
+      existing.items.push(item)
+    } else {
+      groups.push({ label: group, items: [item] })
+    }
+  }
+  return groups
+})
+
+const allBottomItems: MenuItem[] = [
   {
     key: 'admin',
     label: '用户管理',
@@ -127,11 +234,17 @@ const allBottomItems = [
 const bottomItems = computed(() =>
   allBottomItems.filter((item) => {
     const role = authStore.currentUser?.systemRole
-    return role && (item.roles as readonly string[]).includes(role)
+    if (!role || !(item.roles as readonly string[]).includes(role)) {
+      return false
+    }
+    return item.key !== 'settings' || authStore.currentUser?.passwordEnabled
   }),
 )
 
 function navigateTo(path: string) {
+  if (window.matchMedia('(max-width: 768px)').matches) {
+    sidebarCollapsed.value = true
+  }
   router.push(path)
 }
 </script>
@@ -141,7 +254,7 @@ function navigateTo(path: string) {
     <!-- ── 侧边栏 ── -->
     <aside class="sidebar">
       <!-- Logo -->
-      <div class="sidebar-brand" @click="router.push('/')">
+      <div class="sidebar-brand" @click="navigateTo('/')">
         <div class="sidebar-brand__mark">
           <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
             <defs>
@@ -156,35 +269,88 @@ function navigateTo(path: string) {
           </svg>
         </div>
         <div v-show="!sidebarCollapsed" class="sidebar-brand__text">
-          <span class="sidebar-brand__eyebrow">Argus · Platform</span>
-          <span class="sidebar-brand__title">数据洞察中心</span>
+          <span class="sidebar-brand__eyebrow">Argus · Campus</span>
+          <span class="sidebar-brand__title">学生工作台</span>
         </div>
       </div>
 
       <!-- 主导航 -->
       <nav class="sidebar-nav">
-        <span v-show="!sidebarCollapsed" class="sidebar-nav__label">Navigation</span>
-        <div
-          v-for="item in menuItems"
-          :key="item.key"
-          class="nav-item"
-          :class="{ active: activeMenu === item.key }"
-          :title="sidebarCollapsed ? item.label : undefined"
-          @click="navigateTo(item.path)"
-        >
-          <span class="nav-item__bar" />
-          <span class="nav-icon" v-html="item.icon" />
-          <span v-show="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
-          <span v-show="!sidebarCollapsed && activeMenu === item.key" class="nav-item__dot" />
-        </div>
+        <template v-for="group in menuGroups" :key="group.label">
+          <span v-show="!sidebarCollapsed" class="sidebar-nav__label">{{ group.label }}</span>
+          <template v-for="item in group.items" :key="item.key">
+            <div
+              v-if="item.key === 'college'"
+              class="nav-item college-nav-item"
+              :class="{ active: activeMenu === item.key }"
+              @mouseenter="canHoverCollegeMenu() && openCollegeMenu()"
+              @mouseleave="closeCollegeMenu"
+            >
+              <span class="nav-item__bar" />
+              <button
+                type="button"
+                class="college-nav-item__link"
+                :title="sidebarCollapsed ? item.label : undefined"
+                @click="navigateToCollege"
+              >
+                <span class="nav-icon" v-html="item.icon" />
+                <span v-show="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
+              </button>
+              <button
+                v-show="!sidebarCollapsed"
+                type="button"
+                class="college-nav-item__toggle"
+                :aria-label="collegeMenuOpen ? '收起大学子模块' : '展开大学子模块'"
+                :aria-expanded="collegeMenuOpen"
+                aria-controls="college-submenu"
+                @click="toggleCollegeMenu"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" :class="{ rotated: collegeMenuOpen }">
+                  <path d="M9 6L15 12L9 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+              <span v-show="!sidebarCollapsed && activeMenu === item.key" class="nav-item__dot" />
+              <transition name="college-submenu">
+                <div v-if="collegeMenuOpen && !sidebarCollapsed" id="college-submenu" class="college-submenu" aria-label="大学子模块">
+                  <button
+                    v-for="(module, index) in collegeModules"
+                    :key="module.key"
+                    type="button"
+                    class="college-submenu__item"
+                    :class="{ active: activeCollegeModule === module.key }"
+                    @click="navigateTo(module.path)"
+                  >
+                    <span class="college-submenu__index">{{ String(index + 1).padStart(2, '0') }}</span>
+                    <span class="college-submenu__label">{{ module.label }}</span>
+                    <span v-if="activeCollegeModule === module.key" class="college-submenu__dot" />
+                  </button>
+                </div>
+              </transition>
+            </div>
+            <button
+              v-else
+              type="button"
+              class="nav-item"
+              :class="{ active: activeMenu === item.key }"
+              :title="sidebarCollapsed ? item.label : undefined"
+              @click="navigateTo(item.path)"
+            >
+              <span class="nav-item__bar" />
+              <span class="nav-icon" v-html="item.icon" />
+              <span v-show="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
+              <span v-show="!sidebarCollapsed && activeMenu === item.key" class="nav-item__dot" />
+            </button>
+          </template>
+        </template>
       </nav>
 
       <!-- 底部导航 -->
-      <div class="sidebar-bottom">
-        <span v-show="!sidebarCollapsed" class="sidebar-nav__label">System</span>
-        <div
+      <div v-if="bottomItems.length" class="sidebar-bottom">
+        <span v-show="!sidebarCollapsed" class="sidebar-nav__label">账号与系统</span>
+        <button
           v-for="item in bottomItems"
           :key="item.key"
+          type="button"
           class="nav-item"
           :class="{ active: activeMenu === item.key }"
           :title="sidebarCollapsed ? item.label : undefined"
@@ -194,9 +360,16 @@ function navigateTo(path: string) {
           <span class="nav-icon" v-html="item.icon" />
           <span v-show="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
           <span v-show="!sidebarCollapsed && activeMenu === item.key" class="nav-item__dot" />
-        </div>
+        </button>
       </div>
     </aside>
+    <button
+      v-if="!sidebarCollapsed"
+      type="button"
+      class="sidebar-backdrop"
+      aria-label="关闭导航菜单"
+      @click="sidebarCollapsed = true"
+    />
 
     <!-- ── 主区域 ── -->
     <div class="main-area">
@@ -211,16 +384,29 @@ function navigateTo(path: string) {
           <div class="breadcrumb">
             <span class="breadcrumb-eyebrow">Argus</span>
             <span class="breadcrumb-sep">/</span>
-            <span class="breadcrumb-current">{{ route.meta.title || '数据洞察中心' }}</span>
+            <span class="breadcrumb-current">{{ currentTitle }}</span>
           </div>
         </div>
         <div class="topbar-right">
+          <ThemeToggle />
+          <el-tooltip
+            v-if="authStore.isUser"
+            :content="route.path.startsWith('/app/college') ? '带上当前材料、实验参数或任务上下文' : '打开独立 AI 助手，管理多轮会话'"
+            placement="bottom"
+          >
+            <button type="button" class="ask-assistant-btn" @click="askAssistant">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M8 10h8M8 14h5M21 12a9 9 0 0 1-9 9H5l-3 2 1-5a9 9 0 1 1 18-6Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>问助手</span>
+            </button>
+          </el-tooltip>
           <div class="user-menu-wrapper">
             <button class="user-chip" :class="{ 'is-open': showUserMenu }" @click="toggleUserMenu">
               <span class="user-chip__avatar">{{ userName.charAt(0).toUpperCase() }}</span>
               <span class="user-chip__text">
                 <span class="user-chip__name">{{ userName }}</span>
-                <span class="user-chip__role">{{ authStore.isAdmin ? '系统管理员' : '用户' }}</span>
+                <span class="user-chip__role">{{ authStore.isAdmin ? '系统管理员' : '同学' }}</span>
               </span>
               <svg class="user-chip__caret" width="12" height="12" viewBox="0 0 24 24" fill="none">
                 <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -232,7 +418,7 @@ function navigateTo(path: string) {
                 <div class="dropdown-header__avatar">{{ userName.charAt(0).toUpperCase() }}</div>
                 <div class="dropdown-header__text">
                   <span class="dropdown-name">{{ userName }}</span>
-                  <span class="dropdown-role">{{ authStore.isAdmin ? '系统管理员' : '用户' }}</span>
+                  <span class="dropdown-role">{{ authStore.isAdmin ? '系统管理员' : '同学' }}</span>
                 </div>
               </div>
               <div class="dropdown-divider"></div>
@@ -269,7 +455,7 @@ function navigateTo(path: string) {
 .sidebar {
   width: 244px;
   flex-shrink: 0;
-  background: #fbfaf6;
+  background: var(--sidebar-background);
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border-default);
@@ -291,6 +477,10 @@ function navigateTo(path: string) {
   width: 1px;
   background: linear-gradient(to bottom, transparent, rgba(74, 144, 217, 0.15), transparent);
   pointer-events: none;
+}
+
+.sidebar-backdrop {
+  display: none;
 }
 
 .collapsed .sidebar {
@@ -316,7 +506,7 @@ function navigateTo(path: string) {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface-white);
   box-shadow: 0 2px 8px rgba(74, 144, 217, 0.1);
   flex-shrink: 0;
   transition: transform 0.25s ease;
@@ -409,6 +599,7 @@ function navigateTo(path: string) {
 /* ════════════ Nav items ════════════ */
 .nav-item {
   position: relative;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 11px;
@@ -421,6 +612,8 @@ function navigateTo(path: string) {
   font-size: 0.88rem;
   font-weight: 500;
   white-space: nowrap;
+  background: transparent;
+  text-align: left;
 }
 
 .nav-item:hover {
@@ -429,10 +622,9 @@ function navigateTo(path: string) {
 }
 
 .nav-item.active {
-  background: #fff;
-  color: var(--brand-primary);
+  background: var(--surface-accent);
+  color: var(--brand-primary-dark);
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .nav-item__bar {
@@ -475,9 +667,134 @@ function navigateTo(path: string) {
   box-shadow: 0 0 6px rgba(92, 201, 193, 0.5);
 }
 
+.college-nav-item {
+  gap: 0;
+  padding: 0;
+}
+
+.college-nav-item__link {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: 1;
+  min-width: 0;
+  padding: 9px 0 9px 13px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.college-nav-item__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 32px;
+  flex-shrink: 0;
+  margin-right: 6px;
+  padding: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.college-nav-item__toggle:hover {
+  background: var(--surface-subtle);
+  color: var(--brand-primary);
+}
+
+.college-nav-item__toggle svg {
+  transition: transform 0.18s ease;
+}
+
+.college-nav-item__toggle svg.rotated {
+  transform: rotate(90deg);
+}
+
+.college-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 8px 22px;
+  padding: 4px 0 4px 10px;
+  border-left: 1px solid var(--border-default);
+  transform-origin: top;
+}
+
+.college-submenu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.college-submenu__item:hover {
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+}
+
+.college-submenu__item.active {
+  background: var(--surface-accent);
+  color: var(--brand-primary-dark);
+  font-weight: 600;
+}
+
+.college-submenu__index {
+  width: 18px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+}
+
+.college-submenu__label {
+  flex: 1;
+}
+
+.college-submenu__dot {
+  width: 5px;
+  height: 5px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--brand-accent);
+}
+
+.college-submenu-enter-active,
+.college-submenu-leave-active {
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.college-submenu-enter-from,
+.college-submenu-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
 .collapsed .nav-item {
   padding: 9px;
   justify-content: center;
+}
+
+.collapsed .college-nav-item {
+  padding: 0;
+}
+
+.collapsed .college-nav-item__link {
+  justify-content: center;
+  padding: 9px;
 }
 
 .collapsed .nav-item__bar {
@@ -501,7 +818,7 @@ function navigateTo(path: string) {
 /* ════════════ Topbar ════════════ */
 .topbar {
   height: 64px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--surface-glass);
   backdrop-filter: saturate(180%) blur(12px);
   border-bottom: 1px solid var(--border-default);
   display: flex;
@@ -576,13 +893,29 @@ function navigateTo(path: string) {
 }
 
 
+.ask-assistant-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 7px 13px;
+  border: 1px solid rgba(74, 144, 217, 0.2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-accent);
+  color: var(--brand-primary-dark);
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: all 0.18s ease;
+}
+.ask-assistant-btn:hover { background: var(--surface-accent-strong); border-color: var(--brand-primary); }
+
 /* User chip */
 .user-chip {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 5px 10px 5px 5px;
-  background: #fff;
+  background: var(--surface-white);
   border: 1px solid var(--border-default);
   border-radius: 100px;
   cursor: pointer;
@@ -650,6 +983,8 @@ function navigateTo(path: string) {
 
 /* Hide extra text when very narrow */
 @media (max-width: 640px) {
+  .ask-assistant-btn span { display: none; }
+  .ask-assistant-btn { padding: 7px 9px; }
   .user-chip__text {
     display: none;
   }
@@ -670,7 +1005,7 @@ function navigateTo(path: string) {
   top: calc(100% + 10px);
   right: 0;
   width: 240px;
-  background: #fff;
+  background: var(--surface-white);
   border: 1px solid var(--border-default);
   border-radius: 14px;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1);
@@ -776,6 +1111,16 @@ function navigateTo(path: string) {
 
 /* ════════════ Responsive ════════════ */
 @media (max-width: 768px) {
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    display: block;
+    border: 0;
+    background: rgba(15, 23, 42, 0.28);
+    cursor: pointer;
+  }
+
   .sidebar {
     width: 0;
   }
@@ -784,8 +1129,10 @@ function navigateTo(path: string) {
     width: 244px;
   }
 
-  .main-area, .collapsed .main-area {
-    min-width: 0; margin-left: 0;
+  .main-area,
+  .collapsed .main-area {
+    min-width: 0;
+    margin-left: 0;
   }
 
   .collapsed .sidebar {

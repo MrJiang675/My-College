@@ -32,7 +32,7 @@ public class User {
     /** 显示名称 */
     private String displayName;
 
-    /** BCrypt 密码哈希 */
+    /** BCrypt 密码哈希或免密账号标记 */
     private String passwordHash;
 
     /** 系统角色 */

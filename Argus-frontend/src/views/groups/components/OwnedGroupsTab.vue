@@ -25,8 +25,8 @@ function formatDate(dateStr?: string) {
   <div>
     <EmptyState
       v-if="items.length === 0"
-      title="你还没有创建任何小组"
-      description="点击上方「创建小组」创建你的第一个协作空间，创建后即可邀请成员、上传文档。"
+      title="创建你的第一个课程组或项目组"
+      description="按课程或项目整理资料，创建后即可上传文档；一个人也可以拥有自己的专属课程组。"
     />
 
     <div v-else class="tab-card-grid">
@@ -56,7 +56,7 @@ function formatDate(dateStr?: string) {
 /* Reuses styles from InvitationsTab — see that file for full style definitions */
 .tab-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 24px;
 }
 

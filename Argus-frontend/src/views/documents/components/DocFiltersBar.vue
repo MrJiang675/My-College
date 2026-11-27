@@ -25,7 +25,7 @@ const statusOptions = [
   { label: '全部状态', value: '' },
   { label: '待处理', value: 'PENDING' },
   { label: '处理中', value: 'PROCESSING' },
-  { label: '就绪', value: 'READY' },
+  { label: 'READY 可检索', value: 'READY' },
   { label: '失败', value: 'FAILED' },
 ]
 

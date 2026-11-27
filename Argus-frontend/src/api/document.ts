@@ -239,6 +239,7 @@ export async function uploadDocument(payload: UploadDocumentPayload): Promise<nu
   formData.append('file', payload.file)
 
   const { data } = await http.post<ApiResponse<number>>('/documents/upload', formData, {
+    timeout: 120_000,
     onUploadProgress: (event: AxiosProgressEvent) => {
       payload.onProgress?.(event.loaded, event.total)
     },
@@ -302,6 +303,7 @@ export async function uploadDocumentChunk(
   formData.append('chunk', payload.chunk)
 
   const { data } = await http.post<ApiResponse<UploadStatusResult>>('/documents/upload/chunks', formData, {
+    timeout: 120_000,
     onUploadProgress: (event: AxiosProgressEvent) => {
       onProgress?.(event.loaded)
     },
@@ -350,6 +352,7 @@ export async function completeDocumentUpload(
   signal?: AbortSignal,
 ): Promise<number> {
   const { data } = await http.post<ApiResponse<number>>(`/documents/upload/${uploadId}/complete`, null, {
+    timeout: 120_000,
     signal,
   })
 

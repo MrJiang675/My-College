@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { JoinRequestItem } from '@/api/group'
 
 const props = defineProps<{
   visible: boolean

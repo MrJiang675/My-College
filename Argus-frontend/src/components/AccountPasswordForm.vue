@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { changePassword } from '@/api/auth'
 import { extractApiError } from '@/api/http'
 
-const props = defineProps<{
+defineProps<{
   inline?: boolean
 }>()
 

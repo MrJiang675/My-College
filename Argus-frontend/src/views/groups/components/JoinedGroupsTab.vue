@@ -27,8 +27,8 @@ function formatDate(dateStr?: string) {
   <div>
     <EmptyState
       v-if="items.length === 0"
-      title="你还没有加入任何小组"
-      description="接受其他用户的邀请，或点击上方「加入小组」输入组织 ID 提交加入申请。"
+      title="还没有加入课程组或项目组"
+      description="接受邀请，或通过组织 ID 申请加入已有小组；也可以创建自己的专属课程组。"
     />
 
     <div v-else class="tab-card-grid">
@@ -61,7 +61,7 @@ function formatDate(dateStr?: string) {
 <style scoped>
 .tab-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 24px;
 }
 

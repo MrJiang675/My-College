@@ -35,3 +35,4 @@ build/
 ### Local config (contains real credentials) ###
 application-local.yml
 **/application-local.yml
+deploy/local-run.env

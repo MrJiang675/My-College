@@ -14,7 +14,7 @@ import { fetchGroups } from '@/api/group'
 import { extractApiError } from '@/api/http'
 import { ElMessageBox } from 'element-plus'
 import DocumentPreviewModal from '@/components/DocumentPreviewModal.vue'
-import PageHeaderHero from '@/components/layout/PageHeaderHero.vue'
+import ModuleGuideHeader from '@/components/ModuleGuideHeader.vue'
 import DocStatsBar from './components/DocStatsBar.vue'
 import RecentFailuresPanel from './components/RecentFailuresPanel.vue'
 import DocFiltersBar from './components/DocFiltersBar.vue'
@@ -154,6 +154,12 @@ function onUploadCompleted() {
   loadDocuments()
 }
 
+function goToQa() {
+  if (selectedGroupId.value !== null) {
+    void router.push('/app/qa')
+  }
+}
+
 // ── Preview ──
 const previewVisible = ref(false)
 const previewDocument = ref<DocumentItem | null>(null)
@@ -245,12 +251,8 @@ onMounted(() => {
       <div class="doc-center__blob doc-center__blob--two" />
     </div>
 
-    <!-- Hero header -->
-    <PageHeaderHero
-      eyebrow="Document Center"
-      title="文档中心"
-      description="集中管理知识库文档：上传、解析、预览与检索，所有内容驱动 RAG 问答与协作。"
-    />
+    <!-- Guide header -->
+    <ModuleGuideHeader guide-key="documents" />
 
     <!-- Stats overview -->
     <DocStatsBar
@@ -306,9 +308,9 @@ onMounted(() => {
           <path d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
       </div>
-      <h3>暂无可用群组</h3>
-      <p>请先创建或加入一个群组，再上传和管理文档</p>
-      <button class="doc-center__btn-primary" @click="router.push('/app/groups')">前往协作小组</button>
+      <h3>一个人也可以创建自己的课程组</h3>
+      <p>先建立一个专属课程组，用来整理课程讲义或项目资料，再上传文档开启知识库问答。</p>
+      <button class="doc-center__btn-primary" @click="router.push('/app/groups')">创建我的课程组</button>
     </div>
 
     <!-- ── No group selected ── -->
@@ -381,6 +383,7 @@ onMounted(() => {
       @retry="handleRetry"
       @remove="handleDelete"
       @reload="loadDocuments"
+      @go-to-qa="goToQa"
     />
 
     <!-- Upload dialog -->
@@ -403,13 +406,15 @@ onMounted(() => {
 <style scoped>
 .doc-center {
   position: relative;
+  width: 100%;
+  min-width: 0;
   min-height: 100%;
 }
 
 /* Decorative atmosphere */
 .doc-center__backdrop {
   position: absolute;
-  inset: -40px -20px auto;
+  inset: -40px 0 auto;
   height: 320px;
   pointer-events: none;
   overflow: hidden;
@@ -436,7 +441,7 @@ onMounted(() => {
   right: -40px;
   width: 280px;
   height: 280px;
-  background: radial-gradient(circle, rgba(92, 201, 193, 0.35) 0%, rgba(92, 201, 193, 0) 70%);
+  background: radial-gradient(circle, rgba(122, 184, 245, 0.3) 0%, rgba(122, 184, 245, 0) 70%);
 }
 
 .doc-center > :not(.doc-center__backdrop) {
@@ -482,7 +487,7 @@ onMounted(() => {
   width: 76px;
   height: 76px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(74, 144, 217, 0.08), rgba(92, 201, 193, 0.08));
+  background: var(--surface-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -536,5 +541,11 @@ onMounted(() => {
 
 .doc-center__btn-retry:hover {
   background: rgba(74, 144, 217, 0.12);
+}
+
+@media (max-width: 640px) {
+  .doc-center__state { padding: 44px 18px; }
+  .doc-center__state p { line-height: 1.7; overflow-wrap: anywhere; }
+  .doc-center__empty-icon { width: 64px; height: 64px; }
 }
 </style>

@@ -9,7 +9,6 @@ import {
   createAssistantSession,
   deleteAssistantSession,
   fetchAssistantSessions,
-  fetchAssistantSessionDetail,
   fetchAssistantConversationContext,
   renameAssistantSession,
   streamAssistantMessage,
@@ -23,6 +22,7 @@ import type {
 } from '@/types/assistant'
 import type { DocumentItem } from '@/api/document'
 import DocumentPreviewModal from '@/components/DocumentPreviewModal.vue'
+import ModuleGuideHeader from '@/components/ModuleGuideHeader.vue'
 import AssistantSidebar from './components/AssistantSidebar.vue'
 import AssistantTranscript from './components/AssistantTranscript.vue'
 import AssistantComposer from './components/AssistantComposer.vue'
@@ -406,6 +406,31 @@ onMounted(async () => {
     />
 
     <main class="asst-page__main">
+      <div class="asst-page__guide">
+        <ModuleGuideHeader guide-key="assistant">
+          <template #actions>
+            <button class="asst-page__new-chat" type="button" @click="handleNewSession">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              新建会话
+            </button>
+          </template>
+        </ModuleGuideHeader>
+
+        <div class="asst-page__context" :class="{ 'is-warning': mode === 'KB_SEARCH' && selectedGroupId === null }">
+          <span class="asst-page__context-dot" aria-hidden="true" />
+          <template v-if="mode === 'KB_SEARCH'">
+            <span v-if="selectedGroupId !== null">
+              知识库检索：<strong>{{ selectedGroupName || '已选课程小组' }}</strong>
+            </span>
+            <span v-else>知识库检索：请在下方选择课程小组</span>
+          </template>
+          <span v-else>独立多轮会话 · 自由讨论，不自动关联当前任务</span>
+        </div>
+      </div>
+
       <template v-if="activeSessionId !== null && (messages.length > 0 || loadingHistory)">
         <AssistantTranscript
           :messages="messages"
@@ -450,13 +475,14 @@ onMounted(async () => {
 <style scoped>
 .asst-page {
   display: flex;
+  width: 100%;
   height: 100%;
   min-height: 600px;
-  background: #fff;
+  background: var(--surface-white);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--shadow-sm);
   position: relative;
 }
 
@@ -464,8 +490,83 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  width: 100%;
   min-width: 0;
   position: relative;
+}
+
+.asst-page__guide {
+  flex-shrink: 0;
+  padding: 24px 32px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-white);
+}
+
+.asst-page__guide :deep(.module-guide-header) {
+  margin-bottom: 14px;
+}
+
+.asst-page__new-chat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 13px;
+  border: 1px solid var(--brand-primary);
+  border-radius: var(--radius-sm);
+  background: var(--brand-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.asst-page__new-chat:hover {
+  background: var(--brand-primary-dark);
+  box-shadow: 0 4px 12px rgba(74, 144, 217, 0.2);
+}
+
+.asst-page__context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 7px 11px;
+  border: 1px solid rgba(74, 144, 217, 0.18);
+  border-radius: var(--radius-sm);
+  background: var(--surface-accent);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.asst-page__context strong {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.asst-page__context-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--brand-primary);
+}
+
+.asst-page__context.is-warning {
+  border-color: rgba(245, 158, 11, 0.22);
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+}
+
+.asst-page__context.is-warning .asst-page__context-dot {
+  background: var(--status-warning);
 }
 
 @media (max-width: 900px) {
@@ -475,5 +576,11 @@ onMounted(async () => {
     min-height: 100vh;
     border-radius: 0;
   }
+}
+
+@media (max-width: 640px) {
+  .asst-page__guide { padding: 18px 16px 14px; }
+  .asst-page__context { align-items: flex-start; }
+  .asst-page__context-dot { margin-top: 7px; }
 }
 </style>
