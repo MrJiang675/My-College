@@ -32,6 +32,16 @@ public record AssistantChatRequest(
          * <p>选填，如果填写则必须为正整数；CHAT 模式下不应传递此字段</p>
          */
         @Positive(message = "groupId 非法")
-        Long groupId
+        Long groupId,
+        @Size(max=40) String moduleCode,
+        @jakarta.validation.Valid com.argus.rag.college.CampusProfile campusProfile,
+        Boolean enableProfileAdaptation,
+        @Size(max=80) String subMode
 ) {
+    public AssistantChatRequest(Long sessionId,String message,AssistantToolMode toolMode,Long groupId){
+        this(sessionId,message,toolMode,groupId,null,null,null,null);
+    }
+    public com.argus.rag.college.ModuleContext moduleContext(){
+        return new com.argus.rag.college.ModuleContext(moduleCode,campusProfile,enableProfileAdaptation,subMode);
+    }
 }

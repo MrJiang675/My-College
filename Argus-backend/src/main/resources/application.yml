@@ -3,8 +3,8 @@ spring:
     active: dev
   servlet:
     multipart:
-      max-file-size: 50MB
-      max-request-size: 60MB
+      max-file-size: ${ARGUS_MAX_UPLOAD_SIZE_MB:10}MB
+      max-request-size: ${ARGUS_MAX_REQUEST_SIZE_MB:12}MB
 
 # ──────────────────────────────────────────────
 # MyBatis-Plus 配置
@@ -38,3 +38,7 @@ argus:
     cors:
       # 开发仅放行本地前端；生产必须通过环境变量指定准确的 Sites Origin。
       allowed-origins: ${ARGUS_RAG_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+
+# Resource limits shared by direct and chunked uploads.
+argus.upload.max-size-mb: ${ARGUS_MAX_UPLOAD_SIZE_MB:10}
+argus.retrieval.elasticsearch-enabled: ${ARGUS_ELASTICSEARCH_ENABLED:true}

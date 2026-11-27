@@ -55,6 +55,19 @@ class DocumentUploadServiceTest {
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
+
+    @Test
+    void oversizedUploadRejectedBeforeSessionWrite() {
+        var service = new DocumentUploadService(documentMapper,documentUploadSessionMapper,documentUploadChunkMapper,
+                groupMembershipService,objectStorageService,vectorIngestionService,elasticsearchChunkIndexService,applicationEventPublisher);
+        var request = new com.argus.rag.document.model.dto.UploadInitRequest(1L,"large.pdf",15L*1024*1024,
+                "application/pdf","a".repeat(64),5L*1024*1024,3);
+        var failure = org.junit.jupiter.api.Assertions.assertThrows(com.argus.rag.common.exception.BusinessException.class,
+                () -> service.initUpload(null,request));
+        org.junit.jupiter.api.Assertions.assertTrue(failure.getMessage().contains("10"));
+        org.mockito.Mockito.verifyNoInteractions(documentUploadSessionMapper,objectStorageService);
+    }
+
     @Test
     @DisplayName("直接上传文档时应计算并保存文件 SHA-256")
     void shouldCalculateFileHashForDirectUpload() {

@@ -57,6 +57,10 @@ import java.util.Map;
 @Service
 @Slf4j
 public class ElasticsearchChunkIndexService {
+    @Value("${argus.retrieval.elasticsearch-enabled:true}")
+    private boolean enabled = true;
+    public boolean isEnabled() { return enabled; }
+
 
 
     /** HTTP 请求超时时间，平衡响应速度和 ES 集群压力 */
@@ -143,6 +147,11 @@ public class ElasticsearchChunkIndexService {
      * @param chunks   文档切片列表（必须已包含 chunkId / groupId / documentId 等字段）
      */
     public void indexReadyChunks(String fileName, List<DocumentChunkEntity> chunks) {
+        if (!enabled) return;
+        try { writeReadyChunks(fileName, chunks); }
+        catch (RuntimeException exception) { log.warn("ES 索引暂不可用，文档保留向量检索能力"); }
+    }
+    private void writeReadyChunks(String fileName, List<DocumentChunkEntity> chunks) {
         if (!StringUtils.hasText(fileName) || chunks == null || chunks.isEmpty()) {
             return;
         }
@@ -161,15 +170,16 @@ public class ElasticsearchChunkIndexService {
      * @param documentId 要清理的文档 ID
      */
     public void deleteDocumentChunks(Long documentId) {
+        if (!enabled) return;
         if (documentId == null || documentId <= 0) {
             return;
         }
-        ensureIndexInitialized();
         String path = "/%s/_delete_by_query".formatted(indexName);
         Map<String, Object> requestBody = Map.of(
                 "query", Map.of("term", Map.of("documentId", documentId))
         );
         try {
+            ensureIndexInitialized();
             sendJsonRequest("POST", path, requestBody, true);
             log.info("ES 文档切片索引删除完成: documentId={}", documentId);
         } catch (RuntimeException exception) {
@@ -200,13 +210,14 @@ public class ElasticsearchChunkIndexService {
      * @return 关键词匹配的切片列表（含归一化分数），无结果或失败时返回空列表
      */
     public List<KeywordHit> search(Long groupId, String question, int topK) {
+        if (!enabled) return List.of();
         if (groupId == null || groupId <= 0 || !StringUtils.hasText(question) || topK <= 0) {
             return List.of();
         }
-        ensureIndexInitialized();
         long startNano = System.nanoTime();
         Map<String, Object> requestBody = buildKeywordSearchRequestBody(groupId, question, topK);
         try {
+            ensureIndexInitialized();
             JsonNode root = sendJsonRequest("POST", "/%s/_search".formatted(indexName), requestBody, true);
             JsonNode hitsNode = root.path("hits").path("hits");
             if (!hitsNode.isArray() || hitsNode.isEmpty()) {

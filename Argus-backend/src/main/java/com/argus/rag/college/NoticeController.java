@@ -54,6 +54,19 @@ public class NoticeController {
     }
     private URI url(String id){return LIST.resolve("/info/1087/"+id+".htm");}
 
+    @GetMapping("/{id:[0-9]{1,12}}/metadata")
+    public ApiResponse<Map<String,String>> metadata(@PathVariable String id) {
+        users.getRequiredCurrentUser();
+        try {
+            String html=fetch(url(id));
+            var date=Pattern.compile("(?:发布时间|发布日期|发布于|date)[^0-9]{0,50}(20[0-9]{2}[-年/][0-9]{1,2}[-月/][0-9]{1,2})",Pattern.CASE_INSENSITIVE).matcher(html);
+            return ApiResponse.success(Map.of("url",url(id).toString(),"publishedAt",date.find()?date.group(1):"需核实"));
+        } catch(Exception unavailable) {
+            if(unavailable instanceof InterruptedException)Thread.currentThread().interrupt();
+            return ApiResponse.success(Map.of("url",url(id).toString(),"publishedAt","需核实"));
+        }
+    }
+
     @GetMapping("/{id:[0-9]{1,12}}")
     public ApiResponse<String> read(@PathVariable String id) {
         users.getRequiredCurrentUser();

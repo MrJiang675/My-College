@@ -5,6 +5,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+if (-not $env:JAVA_TOOL_OPTIONS) {
+    $env:JAVA_TOOL_OPTIONS = "-Xms192m -Xmx384m -XX:MaxMetaspaceSize=160m -XX:+UseSerialGC"
+}
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 function Test-Placeholder {

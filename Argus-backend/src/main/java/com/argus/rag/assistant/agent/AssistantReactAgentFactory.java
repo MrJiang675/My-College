@@ -21,7 +21,7 @@ public class AssistantReactAgentFactory {
 
     // KB_SEARCH 至少需要经历“模型决定调工具 -> 工具执行 -> 模型基于工具结果生成最终回答”，
     // 递归上限过小会导致图在最终回答前被截断，返回空 AssistantMessage。
-    private static final int AGENT_RECURSION_LIMIT = 10;
+    private static final int AGENT_RECURSION_LIMIT = 7;
 
     private final ChatModel chatModel;
     private final AssistantShortTermMemoryHook assistantShortTermMemoryHook;

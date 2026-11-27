@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DemoGuestButton from "@/components/DemoGuestButton.vue"
 import { ref, reactive, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -124,10 +125,11 @@ async function handleExperienceLogin() {
     <template #header>
       <div class="modal-header">
         <h2>欢迎回来</h2>
-        <p>登录数据洞察中心</p>
+        <p>登录Argus 学生工作台</p>
       </div>
     </template>
 
+    <DemoGuestButton />
     <form class="modal-form" @submit.prevent="handleLogin">
       <div class="input-group">
         <label>登录标识</label>

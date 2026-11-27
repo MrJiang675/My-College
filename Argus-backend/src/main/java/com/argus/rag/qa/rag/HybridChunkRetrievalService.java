@@ -45,6 +45,9 @@ import java.util.*;
 @Slf4j
 public class HybridChunkRetrievalService {
 
+    @org.springframework.beans.factory.annotation.Value("${argus.retrieval.elasticsearch-enabled:true}")
+    private boolean elasticsearchEnabled = true;
+
     /** 默认邻居窗口大小（向前向后各扩展的切片数） */
     private static final int DEFAULT_NEIGHBOR_WINDOW = 1;
     /** 每个检索通道返回的最大候选数 */
@@ -357,8 +360,14 @@ public class HybridChunkRetrievalService {
 
     /** 合并关键词检索结果到候选集合，累加 RRF 评分 */
     private void mergeKeywordHits(Map<Long, RetrievalCandidate> candidates, Long groupId, String query) {
+        if (!elasticsearchEnabled) return;
 
-        List<ElasticsearchChunkIndexService.KeywordHit> keywordHits = elasticsearchChunkIndexService.search(groupId, query, CHANNEL_TOP_K);
+        List<ElasticsearchChunkIndexService.KeywordHit> keywordHits;
+        try { keywordHits = elasticsearchChunkIndexService.search(groupId, query, CHANNEL_TOP_K); }
+        catch (RuntimeException exception) {
+            log.warn("关键词检索不可用，本次使用向量检索");
+            return;
+        }
         for (int index = 0; index < keywordHits.size(); index++) {
 
             ElasticsearchChunkIndexService.KeywordHit hit = keywordHits.get(index);

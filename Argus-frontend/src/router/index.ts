@@ -4,18 +4,19 @@ import { useAuthStore } from '@/stores/auth'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    {path:'/preview',component:()=>import('../views/college/PreviewWorkspace.vue'),meta:{title:'Argus 样例预览'}},
     // ── 公开页面（无侧边栏布局） ──
     {
       path: '/',
       name: 'home',
       component: () => import('../views/HomeView.vue'),
-      meta: { title: '数据洞察中心' },
+      meta: { title: 'Argus 学生工作台' },
     },
     {
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
-      meta: { title: '登录 - 数据洞察中心' },
+      meta: { title: '登录 - Argus 学生工作台' },
     },
 
     // ── 认证后的工作区（含侧边栏布局） ──
@@ -24,6 +25,8 @@ const router = createRouter({
       component: () => import('../layouts/DefaultLayout.vue'),
       redirect: '/app/college',
       children: [
+        {path:'college/campus',redirect:'/app/college/opps?view=affairs'},
+        {path:'college/project',redirect:'/app/groups?tab=projects'},
         { path: 'college/:module?', name: 'college', component: () => import('../views/college/CollegeView.vue'), meta: { title: '我的大学 · Argus' } },
 
         {
@@ -53,7 +56,7 @@ const router = createRouter({
         {
           path: 'groups',
           name: 'groups',
-          component: () => import('../views/groups/GroupsPage.vue'),
+          component: () => import('../views/groups/GroupWorkspace.vue'),
           meta: { title: '协作小组' },
         },
         {
@@ -92,13 +95,14 @@ const router = createRouter({
 
 // 全局标题守卫
 router.afterEach((to) => {
-  document.title = (to.meta.title as string) || '数据洞察中心'
+  document.title = (to.meta.title as string) || 'Argus 学生工作台'
 })
 
 // 全局认证守卫
 router.beforeEach(async (to, _from, next) => {
+  if(to.path==='/preview')return next()
   const authStore = useAuthStore()
-  const isPublic = to.path === '/' || to.path === '/login' || to.name === 'not-found'
+  const isPublic = to.path === '/preview' || to.path === '/' || to.path === '/login' || to.name === 'not-found'
 
   // 尝试恢复会话（内部有去重，不会重复请求）
   await authStore.bootstrap()

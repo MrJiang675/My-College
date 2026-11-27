@@ -179,6 +179,10 @@ export interface AssistantConversationContext {
  * toolMode 决定 Agent 的可用工具集，groupId 限定知识库搜索范围。
  */
 export interface AssistantChatPayload {
+  moduleCode?:string
+  campusProfile?:{school:string;college:string;major:string;grade:string}
+  enableProfileAdaptation?:boolean
+  subMode?:string
   /** 目标会话 ID */
   sessionId: number
   /** 用户输入的消息文本 */

@@ -97,6 +97,106 @@ class HybridChunkRetrievalServiceTest {
         assertThat(documentIds).containsExactly(10L, 20L, 30L);
     }
 
+    @Test
+    @DisplayName("ES 断连时仍返回向量证据")
+    void shouldKeepVectorResultsWhenElasticsearchFails() {
+        String question = "请根据团队所有文档，总结每个文档的知识要点";
+        HybridChunkRetrievalService service = new HybridChunkRetrievalService(
+                vectorRetrievalAdapter,
+                elasticsearchChunkIndexService,
+                youcomSearchService,
+                documentChunkMapper,
+                queryPlanningService,
+                documentMapper,
+                0
+        );
+
+        when(queryPlanningService.plan(question))
+                .thenReturn(new QueryPlanResult(QueryPlanStrategy.DIRECT, List.of(question)));
+        when(vectorRetrievalAdapter.search(eq(1L), eq(question), anyInt()))
+                .thenReturn(List.of(
+                        new PgVectorRetrievalAdapter.VectorHit(10L, 101L, 0, "doc1 chunk0", 0.99D),
+                        new PgVectorRetrievalAdapter.VectorHit(10L, 102L, 1, "doc1 chunk1", 0.98D),
+                        new PgVectorRetrievalAdapter.VectorHit(10L, 103L, 2, "doc1 chunk2", 0.97D),
+                        new PgVectorRetrievalAdapter.VectorHit(20L, 201L, 0, "doc2 chunk0", 0.96D),
+                        new PgVectorRetrievalAdapter.VectorHit(30L, 301L, 0, "doc3 chunk0", 0.95D)
+                ));
+        when(elasticsearchChunkIndexService.search(eq(1L), eq(question), anyInt()))
+                .thenThrow(new IllegalStateException("offline"));
+        when(documentChunkMapper.selectQaReadyChunksByIds(eq(1L), anyList()))
+                .thenAnswer(invocation -> invocation.<List<Long>>getArgument(1).stream()
+                        .map(this::readyRow)
+                        .toList());
+        when(documentChunkMapper.selectReadyActiveChunksByDocumentId(eq(1L), eq(10L)))
+                .thenReturn(List.of(
+                        chunk(101L, 10L, 0, "doc1 chunk0"),
+                        chunk(102L, 10L, 1, "doc1 chunk1"),
+                        chunk(103L, 10L, 2, "doc1 chunk2")
+                ));
+        when(documentChunkMapper.selectReadyActiveChunksByDocumentId(eq(1L), eq(20L)))
+                .thenReturn(List.of(chunk(201L, 20L, 0, "doc2 chunk0")));
+        when(documentChunkMapper.selectReadyActiveChunksByDocumentId(eq(1L), eq(30L)))
+                .thenReturn(List.of(chunk(301L, 30L, 0, "doc3 chunk0")));
+
+        RetrievedEvidenceBundle bundle = service.retrieve(1L, question, 3);
+
+        List<Object> documentIds = bundle.documents().stream()
+                .map(Document::getMetadata)
+                .map(metadata -> metadata.get("documentId"))
+                .toList();
+        assertThat(documentIds).containsExactly(10L, 20L, 30L);
+    }
+
+    @Test
+    @DisplayName("关闭 ES 时不调用关键词服务")
+    void shouldSkipKeywordSearchWhenDisabled() {
+        String question = "请根据团队所有文档，总结每个文档的知识要点";
+        HybridChunkRetrievalService service = new HybridChunkRetrievalService(
+                vectorRetrievalAdapter,
+                elasticsearchChunkIndexService,
+                youcomSearchService,
+                documentChunkMapper,
+                queryPlanningService,
+                documentMapper,
+                0
+        );
+
+        when(queryPlanningService.plan(question))
+                .thenReturn(new QueryPlanResult(QueryPlanStrategy.DIRECT, List.of(question)));
+        when(vectorRetrievalAdapter.search(eq(1L), eq(question), anyInt()))
+                .thenReturn(List.of(
+                        new PgVectorRetrievalAdapter.VectorHit(10L, 101L, 0, "doc1 chunk0", 0.99D),
+                        new PgVectorRetrievalAdapter.VectorHit(10L, 102L, 1, "doc1 chunk1", 0.98D),
+                        new PgVectorRetrievalAdapter.VectorHit(10L, 103L, 2, "doc1 chunk2", 0.97D),
+                        new PgVectorRetrievalAdapter.VectorHit(20L, 201L, 0, "doc2 chunk0", 0.96D),
+                        new PgVectorRetrievalAdapter.VectorHit(30L, 301L, 0, "doc3 chunk0", 0.95D)
+                ));
+        org.springframework.test.util.ReflectionTestUtils.setField(service,"elasticsearchEnabled",false);
+        when(documentChunkMapper.selectQaReadyChunksByIds(eq(1L), anyList()))
+                .thenAnswer(invocation -> invocation.<List<Long>>getArgument(1).stream()
+                        .map(this::readyRow)
+                        .toList());
+        when(documentChunkMapper.selectReadyActiveChunksByDocumentId(eq(1L), eq(10L)))
+                .thenReturn(List.of(
+                        chunk(101L, 10L, 0, "doc1 chunk0"),
+                        chunk(102L, 10L, 1, "doc1 chunk1"),
+                        chunk(103L, 10L, 2, "doc1 chunk2")
+                ));
+        when(documentChunkMapper.selectReadyActiveChunksByDocumentId(eq(1L), eq(20L)))
+                .thenReturn(List.of(chunk(201L, 20L, 0, "doc2 chunk0")));
+        when(documentChunkMapper.selectReadyActiveChunksByDocumentId(eq(1L), eq(30L)))
+                .thenReturn(List.of(chunk(301L, 30L, 0, "doc3 chunk0")));
+
+        RetrievedEvidenceBundle bundle = service.retrieve(1L, question, 3);
+
+        List<Object> documentIds = bundle.documents().stream()
+                .map(Document::getMetadata)
+                .map(metadata -> metadata.get("documentId"))
+                .toList();
+        assertThat(documentIds).containsExactly(10L, 20L, 30L);
+        org.mockito.Mockito.verifyNoInteractions(elasticsearchChunkIndexService);
+    }
+
     private Map<String, Object> readyRow(Long chunkId, Long documentId, Integer chunkIndex, String fileName) {
         return Map.of(
                 "groupId", 1L,

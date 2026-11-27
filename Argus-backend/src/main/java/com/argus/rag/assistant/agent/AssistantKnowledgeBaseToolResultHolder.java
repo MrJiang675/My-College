@@ -12,6 +12,9 @@ import java.util.List;
  */
 public class AssistantKnowledgeBaseToolResultHolder {
 
+    private int invocations;
+    public boolean allowInvocation(){return ++invocations <= 3;}
+
     private List<AskQuestionResponse.Citation> citations = List.of();
     private KnowledgeBaseSearchState searchState = KnowledgeBaseSearchState.NOT_STARTED;
 

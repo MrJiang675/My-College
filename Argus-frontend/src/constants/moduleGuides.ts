@@ -65,7 +65,7 @@ export const moduleGuides: Record<ModuleGuideKey, ModuleGuide> = {
   },
   practice: {
     title: '专业实践',
-    subtitle: '跑交互实验曲线，或逐条核实采访',
+    subtitle: '电学、力学、统计的确定性实验与采访核实',
     steps: [
       '描述想验证的现象，或粘贴实验指导书、采访原话与报道。',
       '给出明确模型和参数后，在右侧拖动时间点或测量位置读数。',
@@ -79,11 +79,12 @@ export const moduleGuides: Record<ModuleGuideKey, ModuleGuide> = {
       'RC 充电：理想直流阶跃曲线，支持时间常数、时间点读数和双曲线对比。',
       '悬臂梁静载：按截面、梁长、弹性模量、集中力与位置计算挠度。',
       '采访核实：对照采访原话、报道表述与核实意见。',
+      '数学统计：正态总体、均值抽样分布与 95% 区间。',
       '其他学科可讨论步骤、条件与测量方法；数值仿真限于当前已支持模型。',
     ],
   },
   opps: {
-    title: '校园机会',
+    title: '校园机会与办事',
     subtitle: '核对竞赛报名资格与缺失材料',
     steps: [
       '粘贴竞赛、奖项、交流或招募通知，也可读取内置公开公告。',

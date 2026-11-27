@@ -44,6 +44,17 @@ public class AssistantService {
     private final LlmUsageCollector llmUsageCollector;
     private final LlmCostCalculator llmCostCalculator;
 
+    private com.argus.rag.assistant.model.vo.chat.AssistantAgentResult chatAgent(
+            AssistantChatRequest context,Long user,Long session,com.argus.rag.assistant.model.enums.AssistantToolMode mode,Long group,String message){
+        return context.moduleCode()==null?assistantAgentFacade.chat(user,session,mode,group,message):
+            assistantAgentFacade.chat(user,session,mode,group,message,context.moduleContext());
+    }
+    private com.argus.rag.assistant.model.vo.chat.AssistantAgentResult streamAgent(
+            AssistantChatRequest context,Long user,Long session,com.argus.rag.assistant.model.enums.AssistantToolMode mode,Long group,String message,Consumer<String> consumer){
+        return context.moduleCode()==null?assistantAgentFacade.streamChat(user,session,mode,group,message,consumer):
+            assistantAgentFacade.streamChat(user,session,mode,group,message,consumer,context.moduleContext());
+    }
+
     private static final Logger log = LoggerFactory.getLogger(AssistantService.class);
     private static final String MODEL_NAME = "glm-4-flash";
     private static final int TOKEN_ESTIMATE_DIVISOR = 4;
@@ -140,7 +151,7 @@ public class AssistantService {
             AssistantStreamEventEmitter eventEmitter
     ) {
         streamChat( chatRequest, eventEmitter, deltaEmitter ->
-                assistantAgentFacade.streamChat(
+                streamAgent(chatRequest,
                         currentUserService.requireBusinessUser().userId(),
                         chatRequest.sessionId(),
                         chatRequest.toolMode(),
@@ -271,7 +282,7 @@ public class AssistantService {
     ) {
         requireKnowledgeBaseReadableIfNeeded( safeRequest);
         // CHAT 和 KB_SEARCH 都统一走 Agent。KB_SEARCH 模式下，Agent 会通过知识库 Tool 获取证据。
-        AssistantAgentResult agentResult = assistantAgentFacade.chat(
+        AssistantAgentResult agentResult = chatAgent(safeRequest,
                 userId,
                 safeRequest.sessionId(),
                 safeRequest.toolMode(),

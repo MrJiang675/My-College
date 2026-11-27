@@ -1,3 +1,5 @@
+import axios from 'axios'
+import { MAX_UPLOAD_BYTES, fileLimitMessage } from '@/constants/uploadLimits'
 import { ref } from 'vue'
 import { completeDocumentUpload, initDocumentUpload, uploadDocumentChunk } from '@/api/document'
 import { extractApiError } from '@/api/http'
@@ -14,7 +16,12 @@ export function useChunkedUpload() {
   let abortController: AbortController | null = null
 
   const uploadFile = async (file: File, groupId: number): Promise<number | null> => {
+    if (isUploading.value) return null
     reset()
+    if (file.size > MAX_UPLOAD_BYTES) {
+      error.value = fileLimitMessage(file)
+      return null
+    }
     isUploading.value = true
     stage.value = 'hashing'
     hashingProgress.value = '正在计算文件指纹...'
@@ -29,15 +36,18 @@ export function useChunkedUpload() {
 
       const requestedChunkSize = Math.min(CHUNK_SIZE, file.size)
       const requestedChunkCount = Math.ceil(file.size / requestedChunkSize)
-      const init = await initDocumentUpload({
-        groupId,
-        fileName: file.name,
-        fileSize: file.size,
-        contentType: file.type || 'application/octet-stream',
-        fileHash,
-        chunkSize: requestedChunkSize,
-        chunkCount: requestedChunkCount,
-      }, controller.signal)
+      const init = await initDocumentUpload(
+        {
+          groupId,
+          fileName: file.name,
+          fileSize: file.size,
+          contentType: file.type || 'application/octet-stream',
+          fileHash,
+          chunkSize: requestedChunkSize,
+          chunkCount: requestedChunkCount,
+        },
+        controller.signal,
+      )
 
       ensureNotAborted(controller.signal)
       if (init.instantUpload) {
@@ -52,6 +62,7 @@ export function useChunkedUpload() {
         throw new Error('上传初始化失败')
       }
 
+      const uploadId = init.uploadId
       const chunkSize = init.chunkSize ?? requestedChunkSize
       const chunkCount = init.chunkCount ?? requestedChunkCount
       const uploadedChunks = new Set(init.uploadedChunks)
@@ -66,12 +77,20 @@ export function useChunkedUpload() {
         const start = index * chunkSize
         const chunk = file.slice(start, Math.min(file.size, start + chunkSize))
         const chunkHash = await sha256(chunk, controller.signal)
-        await uploadDocumentChunk({
-          uploadId: init.uploadId,
-          chunkIndex: index,
-          chunkHash,
-          chunk,
-        }, undefined, controller.signal)
+        await retryChunk(
+          () =>
+            uploadDocumentChunk(
+              {
+                uploadId,
+                chunkIndex: index,
+                chunkHash,
+                chunk,
+              },
+              undefined,
+              controller.signal,
+            ),
+          controller.signal,
+        )
 
         uploadedChunks.add(index)
         chunkProgress.value = { uploaded: uploadedChunks.size, total: chunkCount }
@@ -85,9 +104,10 @@ export function useChunkedUpload() {
       return documentId
     } catch (err) {
       stage.value = ''
-      error.value = controller.signal.aborted
-        ? '上传已取消'
-        : extractApiError(err, '分片上传失败')
+      const canceled = controller.signal.aborted
+      controller.abort()
+      error.value = canceled ? '上传已取消' : extractApiError(err, '上传失败，请重试')
+      stage.value = canceled ? 'CANCELED' : 'FAILED'
       return null
     } finally {
       if (abortController === controller) {
@@ -115,7 +135,17 @@ export function useChunkedUpload() {
     stage.value = ''
   }
 
-  return { isUploading, progress, error, stage, hashingProgress, chunkProgress, uploadFile, reset, cancel }
+  return {
+    isUploading,
+    progress,
+    error,
+    stage,
+    hashingProgress,
+    chunkProgress,
+    uploadFile,
+    reset,
+    cancel,
+  }
 }
 
 async function sha256(data: Blob, signal: AbortSignal): Promise<string> {
@@ -126,11 +156,40 @@ async function sha256(data: Blob, signal: AbortSignal): Promise<string> {
   const buffer = await data.arrayBuffer()
   ensureNotAborted(signal)
   const digest = await globalThis.crypto.subtle.digest('SHA-256', buffer)
-  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 function ensureNotAborted(signal: AbortSignal) {
   if (signal.aborted) {
     throw new DOMException('上传已取消', 'AbortError')
+  }
+}
+
+async function retryChunk(operation: () => Promise<unknown>, signal: AbortSignal) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    signal.throwIfAborted()
+    try {
+      return await operation()
+    } catch (error) {
+      const status = (error as { response?: { status: number } }).response?.status
+      const retryable =
+        (status !== undefined && status >= 500) || (axios.isAxiosError(error) && !error.response)
+      if (signal.aborted || !retryable || attempt === 2) throw error
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(
+          () => {
+            signal.removeEventListener('abort', abort)
+            resolve()
+          },
+          250 * 2 ** attempt,
+        )
+        const abort = () => {
+          clearTimeout(timer)
+          signal.removeEventListener('abort', abort)
+          reject(new DOMException('已取消', 'AbortError'))
+        }
+        signal.addEventListener('abort', abort, { once: true })
+      })
+    }
   }
 }

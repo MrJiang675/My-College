@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import {MAX_UPLOAD_BYTES,MAX_UPLOAD_MB,fileLimitMessage} from '@/constants/uploadLimits'
 import { ref, nextTick, watch, computed, reactive } from 'vue'
 import { uploadDocument } from '@/api/document'
 import { extractApiError } from '@/api/http'
@@ -8,6 +9,7 @@ const props = defineProps<{
   visible: boolean
   groupId: number | null
   groupLabel: string
+  initialFile?:File
 }>()
 
 const emit = defineEmits<{
@@ -16,6 +18,7 @@ const emit = defineEmits<{
 }>()
 
 const file = ref<File | null>(null)
+let directController:AbortController|undefined
 const progress = ref(0)
 const loading = ref(false)
 const errorMsg = ref('')
@@ -25,7 +28,7 @@ const dragging = ref(false)
 
 const allowedExts = ['.txt', '.md', '.pdf', '.docx']
 const DIRECT_UPLOAD_MAX_SIZE = 10 * 1024 * 1024
-const MAX_FILE_SIZE = 256 * 1024 * 1024
+const MAX_FILE_SIZE = MAX_UPLOAD_BYTES
 
 const chunked = reactive(useChunkedUpload())
 
@@ -51,7 +54,8 @@ watch(
   (val) => {
     if (val) {
       resetState()
-      nextTick(() => fileInputRef.value?.click())
+      if(props.initialFile)file.value=props.initialFile
+      else nextTick(() => fileInputRef.value?.click())
     }
   },
 )
@@ -62,7 +66,7 @@ function validateFile(f: File): string | null {
     return `不支持的文件类型（支持: ${allowedExts.join(', ')}）`
   }
   if (f.size > MAX_FILE_SIZE) {
-    return `文件大小不能超过 ${formatSize(MAX_FILE_SIZE)}`
+    return fileLimitMessage(f)
   }
   return null
 }
@@ -78,6 +82,7 @@ function onFilePicked(e: Event) {
   if (err) {
     errorMsg.value = err
     file.value = null
+    if (fileInputRef.value) fileInputRef.value.value = ''
     return
   }
   errorMsg.value = ''
@@ -93,6 +98,7 @@ function onDrop(e: DragEvent) {
   if (err) {
     errorMsg.value = err
     file.value = null
+    if (fileInputRef.value) fileInputRef.value.value = ''
     return
   }
   errorMsg.value = ''
@@ -111,7 +117,10 @@ function onDragLeave() {
 async function handleUpload() {
   if (!file.value || props.groupId === null) return
 
+  const invalid=validateFile(file.value)
+  if(invalid){errorMsg.value=invalid;file.value=null;return}
   loading.value = true
+  directController=new AbortController()
   errorMsg.value = ''
   progress.value = 0
   try {
@@ -123,7 +132,7 @@ async function handleUpload() {
     } else {
       await uploadDocument({
         groupId: props.groupId,
-        file: file.value,
+        file: file.value,signal:directController.signal,
         onProgress: (loaded, total) => {
           if (total) {
             progress.value = Math.round((loaded / total) * 100)
@@ -151,6 +160,10 @@ async function retryUpload() {
   await handleUpload()
 }
 
+function cancelUpload(){
+ directController?.abort()
+ chunked.cancel()
+}
 function close() {
   if (isUploading.value) return
   emit('update:visible', false)
@@ -207,7 +220,7 @@ function formatSize(bytes: number): string {
             <strong>点击选择文件</strong>
             <span>或将文件拖拽到此处</span>
           </p>
-          <p class="upload-dialog__zone-hint">支持 TXT · MD · PDF · DOCX，最大 256 MB，超过 10 MB 自动分片</p>
+          <p class="upload-dialog__zone-hint">支持 TXT · MD · PDF · DOCX，单文件不超过 {{ MAX_UPLOAD_MB }} MB</p>
         </template>
         <template v-else>
           <div class="upload-dialog__file-icon">
@@ -261,6 +274,7 @@ function formatSize(bytes: number): string {
       </div>
 
       <!-- Error with retry -->
+      <button v-if="isUploading" type="button" @click="cancelUpload">取消上传</button>
       <div v-if="displayError" class="upload-dialog__error">
         <div class="upload-dialog__error-icon">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -269,7 +283,7 @@ function formatSize(bytes: number): string {
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
         </div>
-        <span class="upload-dialog__error-text">{{ displayError }}</span>
+        <span class="upload-dialog__error-text">{{ displayError }}</span><button type="button" @click="errorMsg='';chunked.reset()">关闭提示</button>
         <button
           v-if="file && !isUploading"
           class="upload-dialog__error-retry"

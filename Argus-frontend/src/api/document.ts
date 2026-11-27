@@ -87,6 +87,7 @@ export interface DocumentPreview {
  * 直接上传（小文件）的请求参数，仅前端内部使用
  */
 interface UploadDocumentPayload {
+  signal?:AbortSignal
   /** 目标群组 ID（需为当前用户管理的群组） */
   groupId: number
   /** 要上传的文件对象 */
@@ -240,6 +241,7 @@ export async function uploadDocument(payload: UploadDocumentPayload): Promise<nu
 
   const { data } = await http.post<ApiResponse<number>>('/documents/upload', formData, {
     timeout: 120_000,
+    signal:payload.signal,
     onUploadProgress: (event: AxiosProgressEvent) => {
       payload.onProgress?.(event.loaded, event.total)
     },

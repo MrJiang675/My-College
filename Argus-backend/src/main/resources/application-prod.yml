@@ -41,8 +41,8 @@ spring:
         distance-type: cosine_distance
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 12MB
+      max-file-size: ${ARGUS_MAX_UPLOAD_SIZE_MB:10}MB
+      max-request-size: ${ARGUS_MAX_REQUEST_SIZE_MB:12}MB
 
 storage:
   minio:
@@ -56,6 +56,7 @@ argus:
     cors:
       allowed-origins: ${ARGUS_RAG_CORS_ALLOWED_ORIGINS}
     auth:
+      demo-guest-enabled: ${ARGUS_DEMO_GUEST_ENABLED:true}
       jwt-secret: ${ARGUS_RAG_JWT_SECRET}
       issuer: argus-rag
       access-token-expire-minutes: 30
@@ -83,3 +84,5 @@ youcom:
     enabled: ${YOUCOM_SEARCH_ENABLED:false}
     api-key: ${YOUCOM_API_KEY:}
     top-k: 10
+
+argus.retrieval.elasticsearch-enabled: ${ARGUS_ELASTICSEARCH_ENABLED:false}

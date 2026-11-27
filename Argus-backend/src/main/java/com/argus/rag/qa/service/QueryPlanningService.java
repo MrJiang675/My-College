@@ -65,10 +65,12 @@ public class QueryPlanningService {
 
             Prompt planPrompt = queryPlanningUserPromptTemplate.create(Map.of("question", normalizedQuestion));
 
-            QueryPlanResult rawResult = queryPlanningChatClient.prompt(planPrompt)
+            QueryPlanResult rawResult = reactor.core.publisher.Mono.fromCallable(()->queryPlanningChatClient.prompt(planPrompt)
 //                    .user(user -> user.text(renderUserPrompt(normalizedQuestion)))
                     .call()
-                    .entity(QueryPlanResult.class);
+                    .entity(QueryPlanResult.class))
+                    .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+                    .timeout(java.time.Duration.ofSeconds(10)).block();
             QueryPlanResult validatedPlan = validatePlan(rawResult, normalizedQuestion);
             log.info("查询规划完成: strategy={}, queries={}", validatedPlan.strategy(), validatedPlan.queries());
             return validatedPlan;

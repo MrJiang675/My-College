@@ -37,10 +37,14 @@ public class QaAnswerParser {
         if (!StringUtils.hasText(rawAnswer)) {
             return null;
         }
+        String cleaned = rawAnswer.trim().replaceAll("(?s)^```(?:json)?\\s*|\\s*```$", "").trim();
+        int start = cleaned.indexOf('{'), end = cleaned.lastIndexOf('}');
+        String candidate = start >= 0 && end > start ? cleaned.substring(start, end + 1) : cleaned;
+        candidate = candidate.replaceAll(",\\s*([}\\]])", "$1");
         try {
-            return objectMapper.readValue(rawAnswer, KnowledgeAnswerOutput.class);
+            return objectMapper.readValue(candidate, KnowledgeAnswerOutput.class);
         } catch (JsonProcessingException exception) {
-            return null;
+            return new KnowledgeAnswerOutput(true, "【需核实】" + cleaned, "UNVERIFIED_TEXT", "模型原文，格式未通过核验");
         }
     }
 }
