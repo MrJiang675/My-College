@@ -17,6 +17,7 @@ import {
 import { extractApiError } from '@/api/http'
 import type { DocumentItem } from '@/api/document'
 import DocumentPreviewModal from '@/components/DocumentPreviewModal.vue'
+import ModuleGuideHeader from '@/components/ModuleGuideHeader.vue'
 import QaSidebar from './components/QaSidebar.vue'
 import QaTranscript from './components/QaTranscript.vue'
 import QaComposer from './components/QaComposer.vue'
@@ -424,6 +425,29 @@ onMounted(() => {
     />
 
     <main class="qa-page__main">
+      <div class="qa-page__guide">
+        <ModuleGuideHeader guide-key="qa">
+          <template #actions>
+            <button class="qa-page__new-chat" type="button" @click="handleNewChat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              新建会话
+            </button>
+          </template>
+        </ModuleGuideHeader>
+
+        <div class="qa-page__context" :class="{ 'is-warning': !hasGroup }">
+          <span class="qa-page__context-dot" aria-hidden="true" />
+          <template v-if="hasGroup">
+            <span>当前课程知识库：<strong>{{ selectedGroupName || '已选课程小组' }}</strong></span>
+            <small>仅检索此小组内已入库的资料</small>
+          </template>
+          <span v-else>尚未选择课程知识库，请先在左侧选择小组</span>
+        </div>
+      </div>
+
       <template v-if="activeSession && activeSession.messages.length > 0">
         <QaTranscript
           :messages="activeSession.messages"
@@ -460,21 +484,102 @@ onMounted(() => {
 <style scoped>
 .qa-page {
   display: flex;
+  width: 100%;
   height: 100%;
   min-height: 560px;
-  background: #fff;
+  background: var(--surface-white);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--shadow-sm);
 }
 
 .qa-page__main {
   flex: 1;
   display: flex;
   flex-direction: column;
+  width: 100%;
   min-width: 0;
   position: relative;
+}
+
+.qa-page__guide {
+  flex-shrink: 0;
+  padding: 24px 32px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-white);
+}
+
+.qa-page__guide :deep(.module-guide-header) {
+  margin-bottom: 14px;
+}
+
+.qa-page__new-chat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 13px;
+  border: 1px solid var(--brand-primary);
+  border-radius: var(--radius-sm);
+  background: var(--brand-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.qa-page__new-chat:hover {
+  background: var(--brand-primary-dark);
+  box-shadow: 0 4px 12px rgba(74, 144, 217, 0.2);
+}
+
+.qa-page__context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 7px 11px;
+  border: 1px solid rgba(74, 144, 217, 0.18);
+  border-radius: var(--radius-sm);
+  background: var(--surface-accent);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.qa-page__context strong {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.qa-page__context small {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.qa-page__context-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--brand-primary);
+}
+
+.qa-page__context.is-warning {
+  border-color: rgba(245, 158, 11, 0.22);
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+}
+
+.qa-page__context.is-warning .qa-page__context-dot {
+  background: var(--status-warning);
 }
 
 @media (max-width: 900px) {
@@ -484,5 +589,11 @@ onMounted(() => {
     min-height: 100vh;
     border-radius: 0;
   }
+}
+
+@media (max-width: 640px) {
+  .qa-page__guide { padding: 18px 16px 14px; }
+  .qa-page__context { align-items: flex-start; }
+  .qa-page__context-dot { margin-top: 7px; }
 }
 </style>

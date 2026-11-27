@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { register as registerApi } from '@/api/auth'
 import { extractApiError } from '@/api/http'
-import type { LoginPayload, RegisterPayload } from '@/api/auth'
+import type { LoginPayload } from '@/api/auth'
 
 const props = defineProps<{
   visible: boolean
+  initialExperience?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -18,42 +18,47 @@ const emit = defineEmits<{
 const router = useRouter()
 const authStore = useAuthStore()
 
-const mode = ref<'login' | 'register'>('login')
-
 const loginForm = reactive<LoginPayload>({
   loginId: '',
   password: '',
 })
-
-const registerForm = reactive<RegisterPayload>({
+const experienceForm = reactive({
   username: '',
-  email: '',
-  displayName: '',
-  password: '',
 })
+const showExperience = ref(false)
+const passwordInput = ref<HTMLInputElement | null>(null)
+const experienceInput = ref<HTMLInputElement | null>(null)
 
 const loading = ref(false)
 const errorMsg = ref('')
+const experienceError = ref('')
 
-function switchMode(target: 'login' | 'register') {
-  mode.value = target
+function openExperienceForm() {
+  showExperience.value = true
   errorMsg.value = ''
+  experienceError.value = ''
+  nextTick(() => experienceInput.value?.focus())
 }
 
-watch(() => props.visible, (val) => {
-  if (!val) {
+watch(() => props.visible, async (val) => {
+  if (val) {
+    showExperience.value = props.initialExperience ?? false
+    if (showExperience.value) {
+      await nextTick()
+      experienceInput.value?.focus()
+    }
+  } else {
     errorMsg.value = ''
+    experienceError.value = ''
     loginForm.loginId = ''
     loginForm.password = ''
-    registerForm.username = ''
-    registerForm.email = ''
-    registerForm.displayName = ''
-    registerForm.password = ''
+    experienceForm.username = ''
+    showExperience.value = false
   }
 })
 
 async function handleLogin() {
-  if (!loginForm.loginId.trim() || !loginForm.password.trim()) {
+  if (!loginForm.loginId.trim() || !loginForm.password?.trim()) {
     errorMsg.value = '请输入登录标识和密码'
     return
   }
@@ -74,29 +79,32 @@ async function handleLogin() {
   }
 }
 
-async function handleRegister() {
-  if (!registerForm.username.trim() || !registerForm.email.trim() || !registerForm.password.trim()) {
-    errorMsg.value = '请填写必填字段'
+async function handleExperienceLogin() {
+  if (!experienceForm.username.trim()) {
+    experienceError.value = '请输入用户名'
     return
   }
-  errorMsg.value = ''
+
+  const username = experienceForm.username.trim()
+  experienceError.value = ''
   loading.value = true
   try {
-    await registerApi({
-      username: registerForm.username.trim(),
-      email: registerForm.email.trim(),
-      displayName: registerForm.displayName.trim() || registerForm.username.trim(),
-      password: registerForm.password,
-    })
-    await authStore.login({
-      loginId: registerForm.username.trim(),
-      password: registerForm.password,
-    })
+    await authStore.login({ loginId: username })
     emit('update:visible', false)
     emit('success')
     router.push(authStore.resolveLandingPath())
   } catch (err) {
-    errorMsg.value = extractApiError(err, '注册失败')
+    const message = extractApiError(err, '登录失败')
+    if (message === '该账号需要密码登录') {
+      loginForm.loginId = username
+      loginForm.password = ''
+      showExperience.value = false
+      errorMsg.value = '该账号需要密码，请在登录表单中输入密码'
+      await nextTick()
+      passwordInput.value?.focus()
+    } else {
+      experienceError.value = message
+    }
   } finally {
     loading.value = false
   }
@@ -115,27 +123,12 @@ async function handleRegister() {
   >
     <template #header>
       <div class="modal-header">
-        <h2>{{ mode === 'login' ? '欢迎回来' : '创建账号' }}</h2>
-        <p>{{ mode === 'login' ? '登录数据洞察中心' : '立即注册，开启智能知识服务' }}</p>
+        <h2>欢迎回来</h2>
+        <p>登录数据洞察中心</p>
       </div>
     </template>
 
-    <!-- Toggle tabs -->
-    <div class="mode-tabs">
-      <button
-        class="mode-tab"
-        :class="{ active: mode === 'login' }"
-        @click="switchMode('login')"
-      >登录</button>
-      <button
-        class="mode-tab"
-        :class="{ active: mode === 'register' }"
-        @click="switchMode('register')"
-      >注册</button>
-    </div>
-
-    <!-- Login form -->
-    <form v-if="mode === 'login'" class="modal-form" @submit.prevent="handleLogin">
+    <form class="modal-form" @submit.prevent="handleLogin">
       <div class="input-group">
         <label>登录标识</label>
         <input
@@ -148,6 +141,7 @@ async function handleRegister() {
       <div class="input-group">
         <label>密码</label>
         <input
+          ref="passwordInput"
           v-model="loginForm.password"
           type="password"
           placeholder="输入密码"
@@ -161,47 +155,26 @@ async function handleRegister() {
       </button>
     </form>
 
-    <!-- Register form -->
-    <form v-else class="modal-form" @submit.prevent="handleRegister">
+    <button type="button" class="btn-experience" :disabled="loading" @click="openExperienceForm">
+      体验用户
+    </button>
+
+    <form v-if="showExperience" class="modal-form experience-form" @submit.prevent="handleExperienceLogin">
       <div class="input-group">
-        <label>用户名 <span class="required">*</span></label>
+        <label>体验用户名</label>
         <input
-          v-model="registerForm.username"
+          ref="experienceInput"
+          v-model="experienceForm.username"
           type="text"
-          placeholder="字母、数字、下划线"
+          placeholder="输入一个用户名"
           autocomplete="username"
         />
       </div>
-      <div class="input-group">
-        <label>邮箱 <span class="required">*</span></label>
-        <input
-          v-model="registerForm.email"
-          type="email"
-          placeholder="your@email.com"
-          autocomplete="email"
-        />
-      </div>
-      <div class="input-group">
-        <label>显示名称</label>
-        <input
-          v-model="registerForm.displayName"
-          type="text"
-          placeholder="您的称呼（可选）"
-        />
-      </div>
-      <div class="input-group">
-        <label>密码 <span class="required">*</span></label>
-        <input
-          v-model="registerForm.password"
-          type="password"
-          placeholder="设置密码"
-          autocomplete="new-password"
-        />
-      </div>
-      <p v-if="errorMsg" class="form-error">{{ errorMsg }}</p>
+      <p class="experience-hint">无需注册和密码，输入用户名即可直接进入。</p>
+      <p v-if="experienceError" class="form-error">{{ experienceError }}</p>
       <button type="submit" class="btn-submit" :disabled="loading">
-        <span v-if="!loading">注册</span>
-        <span v-else>注册中...</span>
+        <span v-if="!loading">进入体验</span>
+        <span v-else>登录中...</span>
       </button>
     </form>
   </el-dialog>
@@ -226,32 +199,36 @@ async function handleRegister() {
   margin: 0;
 }
 
-/* Mode toggle tabs */
-.mode-tabs {
-  display: flex;
-  background: var(--surface-muted);
+/* Experience entry */
+.btn-experience {
+  width: 100%;
+  margin-top: 12px;
+  padding: 11px 24px;
+  border: 1.5px solid rgba(74, 144, 217, 0.35);
   border-radius: var(--radius-sm);
-  padding: 3px;
-  margin: 20px 0 16px;
-}
-.mode-tab {
-  flex: 1;
-  padding: 8px 0;
-  border-radius: 6px;
+  background: var(--surface-accent);
+  color: var(--brand-primary-dark);
   font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  background: transparent;
+  font-weight: 600;
   transition: all 0.2s ease;
 }
-.mode-tab.active {
-  background: var(--surface-white);
-  color: var(--text-primary);
-  box-shadow: var(--shadow-xs);
-  font-weight: 600;
+.btn-experience:hover:not(:disabled) {
+  border-color: var(--brand-primary);
+  background: var(--surface-accent-strong);
 }
-.mode-tab:not(.active):hover {
-  color: var(--text-primary);
+.btn-experience:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.experience-form {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--border-default);
+}
+.experience-hint {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 /* Form */
@@ -270,9 +247,6 @@ async function handleRegister() {
   font-weight: 600;
   color: var(--text-primary);
 }
-.required {
-  color: var(--el-color-danger);
-}
 .input-group input {
   padding: 10px 13px;
   border: 1.5px solid var(--border-default);
@@ -285,7 +259,7 @@ async function handleRegister() {
   outline: none;
 }
 .input-group input::placeholder {
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 .input-group input:focus {
   border-color: var(--brand-primary);

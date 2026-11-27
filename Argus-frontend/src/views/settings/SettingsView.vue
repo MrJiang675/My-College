@@ -3,11 +3,13 @@ import { reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { extractApiError } from '@/api/http'
+import ModuleGuideHeader from '@/components/ModuleGuideHeader.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const mustChange = computed(() => authStore.currentUser?.mustChangePassword ?? false)
+const passwordEnabled = computed(() => authStore.currentUser?.passwordEnabled ?? true)
 
 const form = reactive({
   currentPassword: '',
@@ -20,6 +22,10 @@ const errorMsg = ref('')
 const successMsg = ref('')
 
 async function handleChangePassword() {
+  if (!passwordEnabled.value) {
+    return
+  }
+
   errorMsg.value = ''
   successMsg.value = ''
 
@@ -69,10 +75,7 @@ async function handleChangePassword() {
 
 <template>
   <div class="settings-page">
-    <div class="page-header">
-      <h1>系统设置</h1>
-      <p>账号安全与密码管理</p>
-    </div>
+    <ModuleGuideHeader guide-key="settings" />
 
     <!-- 强制修改密码提示 -->
     <div v-if="mustChange" class="must-change-banner">
@@ -86,8 +89,9 @@ async function handleChangePassword() {
 
     <!-- 修改密码 -->
     <div class="settings-card">
-      <h2 class="card-title">修改密码</h2>
-      <form class="password-form" @submit.prevent="handleChangePassword">
+      <template v-if="passwordEnabled">
+        <h2 class="card-title">修改密码</h2>
+        <form class="password-form" @submit.prevent="handleChangePassword">
         <div class="input-group">
           <label>当前密码</label>
           <input
@@ -123,25 +127,20 @@ async function handleChangePassword() {
           <span v-if="!loading">保存修改</span>
           <span v-else>保存中...</span>
         </button>
-      </form>
+        </form>
+      </template>
+      <template v-else>
+        <h2 class="card-title">账号设置</h2>
+        <p class="account-note">当前为体验账号，无需设置或修改密码。</p>
+      </template>
     </div>
   </div>
 </template>
 
 <style scoped>
-.page-header {
-  margin-bottom: 28px;
-}
-.page-header h1 {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 4px;
-}
-.page-header p {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: 0;
+.settings-page {
+  width: 100%;
+  min-width: 0;
 }
 
 /* ── 强制修改密码横幅 ── */
@@ -150,22 +149,24 @@ async function handleChangePassword() {
   align-items: center;
   gap: 10px;
   padding: 14px 18px;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.03));
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: var(--surface-accent);
+  border: 1px solid rgba(74, 144, 217, 0.2);
   border-radius: var(--radius-sm);
-  color: #b45309;
+  color: var(--brand-primary-dark);
   font-size: 14px;
   font-weight: 500;
   margin-bottom: 24px;
 }
 .must-change-banner svg {
   flex-shrink: 0;
-  color: #f59e0b;
+  color: var(--brand-primary);
 }
 
 /* ── 设置卡片 ── */
 .settings-card {
+  width: 100%;
   max-width: 480px;
+  min-width: 0;
   background: var(--surface-white);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
@@ -177,6 +178,12 @@ async function handleChangePassword() {
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 22px;
+}
+
+.account-note {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
 }
 
 /* ── 表单 ── */
@@ -199,6 +206,8 @@ async function handleChangePassword() {
 }
 
 .input-group input {
+  width: 100%;
+  min-width: 0;
   padding: 10px 13px;
   border: 1.5px solid var(--border-default);
   border-radius: var(--radius-sm);
@@ -251,5 +260,10 @@ async function handleChangePassword() {
 .btn-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .must-change-banner { align-items: flex-start; padding: 12px 14px; line-height: 1.6; }
+  .settings-card { padding: 24px 20px; }
 }
 </style>

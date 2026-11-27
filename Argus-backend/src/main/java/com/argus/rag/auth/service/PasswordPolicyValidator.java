@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * 密码策略校验：最小长度、字母+数字组合、BCrypt 字节上限。
  * <p>
- * 供 {@link AuthService} 注册和 {@link AccountService} 修改密码共用。
+ * 供 {@link AccountService} 修改密码使用。
  */
 @Component
 public class PasswordPolicyValidator {

@@ -48,7 +48,7 @@ const emit = defineEmits<{
   position: relative;
   overflow: hidden;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.85); /* Light theme adaptation */
+  background: var(--surface-white);
   border: 1px solid var(--border-default);
   border-radius: 20px;
   padding: 36px 28px;
@@ -61,10 +61,10 @@ const emit = defineEmits<{
 }
 
 .glass-card:hover {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(139, 92, 246, 0.4);
+  background: var(--surface-white);
+  border-color: rgba(74, 144, 217, 0.4);
   transform: translateY(-6px);
-  box-shadow: 0 20px 60px rgba(139, 92, 246, 0.15);
+  box-shadow: 0 20px 60px rgba(74, 144, 217, 0.15);
 }
 
 .glass-card-glow {
@@ -73,7 +73,7 @@ const emit = defineEmits<{
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, transparent 60%);
+  background: radial-gradient(circle, rgba(74, 144, 217, 0.08) 0%, transparent 60%);
   opacity: 0;
   transition: opacity 0.4s;
   pointer-events: none;
@@ -84,16 +84,16 @@ const emit = defineEmits<{
 
 /* Accent (Blue) */
 .glass-card-accent:hover {
-  border-color: rgba(59, 130, 246, 0.4);
-  box-shadow: 0 20px 60px rgba(59, 130, 246, 0.15);
+  border-color: var(--brand-primary);
+  box-shadow: 0 20px 60px rgba(74, 144, 217, 0.15);
 }
 .glass-card-accent .glass-card-glow {
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 60%);
+  background: radial-gradient(circle, rgba(74, 144, 217, 0.08) 0%, transparent 60%);
 }
 .glass-card-accent .glass-tag {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
+  background: var(--surface-accent);
+  border-color: rgba(74, 144, 217, 0.2);
+  color: var(--brand-primary);
 }
 
 /* Success (Green) */
@@ -159,12 +159,12 @@ const emit = defineEmits<{
   flex-shrink: 0;
   display: inline-block;
   padding: 4px 14px;
-  background: rgba(139, 92, 246, 0.1);
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  background: var(--surface-accent);
+  border: 1px solid rgba(74, 144, 217, 0.2);
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #8b5cf6;
+  color: var(--brand-primary);
 }
 
 .glass-desc {
@@ -185,8 +185,10 @@ const emit = defineEmits<{
 
 .glass-footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
+  gap: 12px;
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--border-default);
@@ -195,16 +197,23 @@ const emit = defineEmits<{
 .glass-footer-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 6px;
 }
 
 .glass-code, .glass-time {
   font-size: 0.8rem;
   color: var(--text-muted);
+  overflow-wrap: anywhere;
 }
 
 .glass-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .glass-card { padding: 26px 20px; }
 }
 </style>

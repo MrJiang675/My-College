@@ -3,17 +3,24 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import LoginModal from '@/components/LoginModal.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const showLoginModal = ref(false)
+const initialExperience = ref(false)
+
+function openAuthModal(experience = false) {
+  initialExperience.value = experience
+  showLoginModal.value = true
+}
 
 function navigateToApp() {
   if (authStore.isAuthenticated) {
     router.push(authStore.homePath)
   } else {
-    showLoginModal.value = true
+    openAuthModal(true)
   }
 }
 
@@ -40,7 +47,7 @@ const features = [
   {
     icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
     title: '文档知识管理',
-    desc: '上传多种格式文档，自动切片、向量化、索引入库，支持断点续传。',
+    desc: '上传受支持的文档后自动解析、切片并建立检索索引。',
   },
   {
     icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M19 19L16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
@@ -87,7 +94,11 @@ const cases = [
 <template>
   <div class="landing">
     <!-- ════════ Login Modal ════════ -->
-    <LoginModal v-model:visible="showLoginModal" />
+    <LoginModal
+      v-model:visible="showLoginModal"
+      :initial-experience="initialExperience"
+      @success="showLoginModal = false"
+    />
 
     <!-- ════════ Navbar ════════ -->
     <header class="navbar">
@@ -112,8 +123,9 @@ const cases = [
           <a href="#cases">应用场景</a>
         </nav>
         <div class="nav-actions">
-          <button class="btn-ghost" @click="showLoginModal = true">登录</button>
-          <button class="btn-nav-cta" @click="showLoginModal = true">免费试用</button>
+          <ThemeToggle />
+          <button class="btn-ghost" @click="openAuthModal()">登录</button>
+          <button class="btn-nav-cta" @click="openAuthModal(true)">体验用户</button>
         </div>
       </div>
     </header>
@@ -139,13 +151,13 @@ const cases = [
           实现精准溯源、自主编排的可信智能知识服务。
         </p>
         <div class="hero-actions">
-          <button class="btn-primary" @click="showLoginModal = true">
+          <button class="btn-primary" @click="openAuthModal(true)">
             开始使用
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <button class="btn-outline" @click="navigateToApp()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 6L14 12L8 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            进入工作台
+            进入我的大学
           </button>
         </div>
 
@@ -166,6 +178,7 @@ const cases = [
             <span class="metric-label">文件格式支持</span>
           </div>
         </div>
+        <p class="metric-label">界面示意指标，非实测结果。</p>
       </div>
     </section>
 
@@ -238,8 +251,8 @@ const cases = [
           <h2>准备好构建您的<br>智能知识平台了吗？</h2>
           <p>立即体验企业级 RAG + Agent 解决方案，让每一次提问都有据可查。</p>
           <div class="cta-buttons">
-            <button class="btn-cta-primary" @click="showLoginModal = true">免费试用</button>
-            <button class="btn-cta-outline" @click="navigateToApp()">查看演示</button>
+            <button class="btn-cta-primary" @click="openAuthModal(true)">体验用户</button>
+            <button class="btn-cta-outline" @click="navigateToApp()">进入我的大学</button>
           </div>
         </div>
       </div>
@@ -311,7 +324,7 @@ const caseIcons: Record<string, string> = {
   left: 0;
   right: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--surface-glass);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-default);
@@ -392,7 +405,7 @@ const caseIcons: Record<string, string> = {
   min-height: 100vh;
   display: flex;
   align-items: center;
-  background: linear-gradient(180deg, #f0f6fc 0%, #f8fafc 60%, #ffffff 100%);
+  background: var(--hero-background);
   overflow: hidden;
   padding: 100px 0 80px;
 }
@@ -407,8 +420,8 @@ const caseIcons: Record<string, string> = {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(74, 144, 217, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 144, 217, 0.04) 1px, transparent 1px);
+    linear-gradient(var(--hero-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hero-grid-line) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, black 30%, transparent 70%);
 }
@@ -422,7 +435,7 @@ const caseIcons: Record<string, string> = {
 .hero-glow-1 {
   width: 500px;
   height: 500px;
-  background: rgba(74, 144, 217, 0.12);
+  background: var(--hero-glow-blue);
   top: -100px;
   right: -150px;
 }
@@ -430,7 +443,7 @@ const caseIcons: Record<string, string> = {
 .hero-glow-2 {
   width: 350px;
   height: 350px;
-  background: rgba(92, 201, 193, 0.1);
+  background: var(--hero-glow-teal);
   bottom: -80px;
   left: -100px;
 }

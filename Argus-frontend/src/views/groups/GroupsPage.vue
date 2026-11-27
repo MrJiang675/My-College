@@ -23,7 +23,7 @@ import {
   type OwnerJoinRequestItem,
 } from '@/api/group'
 import { extractApiError } from '@/api/http'
-import PageHeaderHero from '@/components/layout/PageHeaderHero.vue'
+import ModuleGuideHeader from '@/components/ModuleGuideHeader.vue'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import GroupStatsBar from './components/GroupStatsBar.vue'
@@ -74,7 +74,6 @@ const isJoining = ref(false)
 const isInviting = ref(false)
 const isMembersLoading = ref(false)
 const isRequestsLoading = ref(false)
-const isMyRequestsLoading = ref(false)
 
 const currentUserLabel = computed(() => authStore.currentUser?.displayName ?? '用户')
 const currentUserIdLabel = computed(() => authStore.currentUser?.userId?.toString() ?? '--')
@@ -343,19 +342,20 @@ async function handleLeaveGroup(groupId: number) {
 
 <template>
   <div class="groups-page">
-    <!-- Hero -->
-    <PageHeaderHero
-      eyebrow="协作小组"
-      title="我的组"
-      :description="isInitialLoading ? '正在加载协作空间数据...' : '管理你的知识库协作空间，创建或加入小组进行文档协同'"
-    >
+    <!-- Guide header -->
+    <ModuleGuideHeader guide-key="groups" eyebrow="课程与项目协作">
       <template #actions>
         <div class="groups-page__identity">
           <span>{{ currentUserLabel }}</span>
           <small>ID: {{ currentUserIdLabel }}</small>
         </div>
       </template>
-    </PageHeaderHero>
+    </ModuleGuideHeader>
+
+    <p class="groups-page__solo-tip">
+      <span aria-hidden="true">i</span>
+      一个人也可以创建自己的专属课程组，按课程或项目整理资料，不必等待同学加入。
+    </p>
 
     <!-- Feedback -->
     <div v-if="feedback || error" class="groups-feedback">
@@ -502,9 +502,39 @@ async function handleLeaveGroup(groupId: number) {
 </template>
 
 <style scoped>
-/* Push the hero further apart from stats for clear visual hierarchy */
-.groups-page :deep(.page-header-hero) {
-  margin-bottom: 36px;
+/* Page layout */
+.groups-page {
+  width: 100%;
+  min-width: 0;
+}
+
+.groups-page__solo-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: -8px 0 24px;
+  padding: 11px 14px;
+  border: 1px solid rgba(74, 144, 217, 0.16);
+  border-radius: var(--radius-sm);
+  background: var(--surface-accent);
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+
+.groups-page__solo-tip > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  border: 1px solid var(--brand-primary);
+  border-radius: 50%;
+  color: var(--brand-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 /* Feedback */
@@ -579,8 +609,10 @@ async function handleLeaveGroup(groupId: number) {
 /* Layout Header */
 .groups-layout-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
+  gap: 12px 20px;
   border-bottom: 2px solid var(--border-default);
   margin-bottom: 28px;
 }
@@ -588,6 +620,7 @@ async function handleLeaveGroup(groupId: number) {
 /* Toolbar */
 .groups-toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 12px;
 }
@@ -630,13 +663,16 @@ async function handleLeaveGroup(groupId: number) {
 .groups-tabs {
   display: flex;
   gap: 4px;
+  max-width: 100%;
   margin-bottom: -2px;
+  overflow-x: auto;
 }
 
 .tab-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
   padding: 14px 20px;
   border: none;
   border-bottom: 2px solid transparent;
@@ -674,6 +710,16 @@ async function handleLeaveGroup(groupId: number) {
 }
 
 .groups-tab-content {
+  min-width: 0;
   min-height: 200px;
+}
+
+@media (max-width: 640px) {
+  .groups-page__identity { text-align: left; }
+  .groups-layout-header { align-items: stretch; }
+  .groups-toolbar { width: 100%; margin-bottom: 10px; }
+  .modern-action-btn { flex: 1; justify-content: center; padding: 9px 12px; }
+  .tab-btn { padding: 13px 15px; font-size: 0.88rem; }
+  .groups-feedback { overflow-wrap: anywhere; }
 }
 </style>

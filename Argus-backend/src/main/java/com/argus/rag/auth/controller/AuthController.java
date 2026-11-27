@@ -3,7 +3,6 @@ package com.argus.rag.auth.controller;
 import com.argus.rag.auth.CurrentUserService;
 import com.argus.rag.auth.config.AuthProperties;
 import com.argus.rag.auth.model.dto.LoginRequest;
-import com.argus.rag.auth.model.dto.RegisterRequest;
 import com.argus.rag.auth.model.vo.AuthTokensResponse;
 import com.argus.rag.auth.model.vo.CurrentUserProfileResponse;
 import com.argus.rag.auth.security.AuthCookieSupport;
@@ -22,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 认证控制器，提供登录、注册、刷新令牌、登出、获取当前用户等接口。
+ * 认证控制器，提供登录、刷新令牌、登出、获取当前用户等接口。
  * <p>
  * 刷新令牌通过 httpOnly Cookie 下发，前端无需手动处理。
  */
@@ -58,14 +57,6 @@ public class AuthController {
         AuthTokens tokens = authService.login(request.loginId(), request.password());
         authCookieSupport.writeRefreshTokenCookie(response, tokens.refreshToken());
         return ApiResponse.success(AuthTokensResponse.from(tokens));
-    }
-
-    /** 注册新用户 */
-    @PostMapping("/register")
-    @OperationLog
-    public ApiResponse<Void> register(@Valid @RequestBody RegisterRequest request) {
-        authService.register(request);
-        return ApiResponse.success(null);
     }
 
     /** 刷新令牌：从 Cookie 读取 refresh token，返回新的 access token 和 refresh token */

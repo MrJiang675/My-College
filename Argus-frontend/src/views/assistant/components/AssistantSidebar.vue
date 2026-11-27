@@ -73,8 +73,8 @@ function formatRelative(iso: string | null): string {
         </svg>
       </div>
       <div class="asst-sidebar__brand-text">
-        <span class="asst-sidebar__brand-eyebrow">Argus Research</span>
-        <span class="asst-sidebar__brand-title">Agent Console</span>
+        <span class="asst-sidebar__brand-eyebrow">Argus 学习空间</span>
+        <span class="asst-sidebar__brand-title">独立会话</span>
       </div>
       <button
         class="asst-sidebar__refresh"
@@ -93,11 +93,11 @@ function formatRelative(iso: string | null): string {
     <!-- Info hint -->
     <div class="asst-sidebar__section">
       <label class="asst-sidebar__label">
-        <span>会话同步</span>
+        <span>会话记录</span>
         <span class="asst-sidebar__label-dot" />
       </label>
       <p class="asst-sidebar__hint">
-        所有会话已持久化至云端，支持跨设备继续对话。
+        会话保存在当前账号，可从历史记录继续。
       </p>
     </div>
 
@@ -204,7 +204,7 @@ function formatRelative(iso: string | null): string {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: #fbfaf6;
+  background: var(--surface-subtle);
   border-right: 1px solid var(--border-default);
   padding: 22px 18px 16px;
   height: 100%;
@@ -239,7 +239,7 @@ function formatRelative(iso: string | null): string {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent));
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark));
   color: #fff;
   box-shadow: 0 4px 14px rgba(74, 144, 217, 0.25);
   flex-shrink: 0;
@@ -332,8 +332,8 @@ function formatRelative(iso: string | null): string {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--brand-accent);
-  box-shadow: 0 0 0 3px rgba(92, 201, 193, 0.15);
+  background: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
 }
 
 .asst-sidebar__hint {
@@ -360,17 +360,17 @@ function formatRelative(iso: string | null): string {
   font-size: 0.88rem;
   font-weight: 600;
   color: #fff;
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  border: none;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark));
+  border: 1px solid var(--brand-primary);
   border-radius: 10px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.15);
+  box-shadow: 0 4px 14px rgba(74, 144, 217, 0.18);
   transition: all 0.2s ease;
 }
 
 .asst-sidebar__new-chat:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+  box-shadow: 0 8px 20px rgba(74, 144, 217, 0.25);
 }
 
 .asst-sidebar__new-chat:active {
@@ -442,6 +442,7 @@ function formatRelative(iso: string | null): string {
   gap: 10px;
   padding: 9px 10px 9px 12px;
   background: transparent;
+  border: 1px solid transparent;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s ease;
@@ -452,8 +453,12 @@ function formatRelative(iso: string | null): string {
 }
 
 .asst-sidebar__item.is-active {
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  background: var(--surface-accent);
+  border-color: rgba(74, 144, 217, 0.24);
+}
+
+.asst-sidebar__item.is-active .asst-sidebar__item-title {
+  color: var(--brand-primary-dark);
 }
 
 .asst-sidebar__item-bar {
@@ -466,7 +471,7 @@ function formatRelative(iso: string | null): string {
 }
 
 .asst-sidebar__item.is-active .asst-sidebar__item-bar {
-  background: linear-gradient(to bottom, var(--brand-primary), var(--brand-accent));
+  background: linear-gradient(to bottom, var(--brand-primary), var(--brand-primary-dark));
 }
 
 .asst-sidebar__item-body {
@@ -556,7 +561,7 @@ function formatRelative(iso: string | null): string {
   text-align: center;
   border: 1px dashed var(--border-default);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-white);
 }
 
 .asst-sidebar__empty p {
@@ -606,6 +611,35 @@ function formatRelative(iso: string | null): string {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--brand-accent);
+  background: var(--brand-primary);
+}
+
+@media (max-width: 900px) {
+  .asst-sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 430px;
+    padding: 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  .asst-sidebar__brand {
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+
+  .asst-sidebar__history {
+    min-height: 110px;
+  }
+
+  .asst-sidebar__list {
+    max-height: 210px;
+  }
+}
+
+@media (max-width: 640px) {
+  .asst-sidebar { padding: 14px 16px; }
+  .asst-sidebar__item-actions { opacity: 1; }
 }
 </style>

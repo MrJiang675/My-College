@@ -47,8 +47,8 @@ function formatRelative(ts: number): string {
         </svg>
       </div>
       <div class="qa-sidebar__brand-text">
-        <span class="qa-sidebar__brand-eyebrow">Argus Research</span>
-        <span class="qa-sidebar__brand-title">Q&A Console</span>
+        <span class="qa-sidebar__brand-eyebrow">Argus 学习空间</span>
+        <span class="qa-sidebar__brand-title">课程知识库</span>
       </div>
     </div>
 
@@ -154,7 +154,7 @@ function formatRelative(ts: number): string {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: #fbfaf6;
+  background: var(--surface-subtle);
   border-right: 1px solid var(--border-default);
   padding: 22px 18px 16px;
   height: 100%;
@@ -189,7 +189,7 @@ function formatRelative(ts: number): string {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent));
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark));
   color: #fff;
   box-shadow: 0 4px 14px rgba(74, 144, 217, 0.25);
   flex-shrink: 0;
@@ -247,8 +247,8 @@ function formatRelative(ts: number): string {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--brand-accent);
-  box-shadow: 0 0 0 3px rgba(92, 201, 193, 0.15);
+  background: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
 }
 
 .qa-sidebar__picker {
@@ -309,17 +309,17 @@ function formatRelative(ts: number): string {
   font-size: 0.88rem;
   font-weight: 600;
   color: #fff;
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  border: none;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark));
+  border: 1px solid var(--brand-primary);
   border-radius: 10px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.15);
+  box-shadow: 0 4px 14px rgba(74, 144, 217, 0.18);
   transition: all 0.2s ease;
 }
 
 .qa-sidebar__new-chat:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+  box-shadow: 0 8px 20px rgba(74, 144, 217, 0.25);
 }
 
 .qa-sidebar__new-chat:active {
@@ -406,7 +406,7 @@ function formatRelative(ts: number): string {
   width: 100%;
   padding: 9px 10px 9px 12px;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 8px;
   cursor: pointer;
   text-align: left;
@@ -419,8 +419,12 @@ function formatRelative(ts: number): string {
 }
 
 .qa-sidebar__item.is-active {
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  background: var(--surface-accent);
+  border-color: rgba(74, 144, 217, 0.24);
+}
+
+.qa-sidebar__item.is-active .qa-sidebar__item-title {
+  color: var(--brand-primary-dark);
 }
 
 .qa-sidebar__item-bar {
@@ -433,7 +437,7 @@ function formatRelative(ts: number): string {
 }
 
 .qa-sidebar__item.is-active .qa-sidebar__item-bar {
-  background: linear-gradient(to bottom, var(--brand-primary), var(--brand-accent));
+  background: linear-gradient(to bottom, var(--brand-primary), var(--brand-primary-dark));
 }
 
 .qa-sidebar__item-body {
@@ -508,7 +512,7 @@ function formatRelative(ts: number): string {
   text-align: center;
   border: 1px dashed var(--border-default);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-white);
 }
 
 .qa-sidebar__empty p {
@@ -544,6 +548,35 @@ function formatRelative(ts: number): string {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--brand-accent);
+  background: var(--brand-primary);
+}
+
+@media (max-width: 900px) {
+  .qa-sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 430px;
+    padding: 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  .qa-sidebar__brand {
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+
+  .qa-sidebar__history {
+    min-height: 110px;
+  }
+
+  .qa-sidebar__list {
+    max-height: 210px;
+  }
+}
+
+@media (max-width: 640px) {
+  .qa-sidebar { padding: 14px 16px; }
+  .qa-sidebar__item-del { opacity: 1; }
 }
 </style>

@@ -176,12 +176,14 @@ defineExpose({ focus, setText })
 }
 
 .acx__wrap {
+  min-width: 0;
   max-width: 900px;
   margin: 0 auto;
 }
 
 /* Shell */
 .acx__shell {
+  min-width: 0;
   background: #fff;
   border: 1.5px solid var(--border-default);
   border-radius: 16px;
@@ -200,27 +202,27 @@ defineExpose({ focus, setText })
 }
 
 .acx__shell.is-kb {
-  border-color: rgba(92, 201, 193, 0.35);
+  border-color: rgba(74, 144, 217, 0.4);
 }
 
 .acx__shell.is-kb:focus-within {
-  border-color: var(--brand-accent-dark);
+  border-color: var(--brand-primary);
   box-shadow:
-    0 0 0 4px rgba(92, 201, 193, 0.1),
-    0 8px 20px rgba(92, 201, 193, 0.1);
+    0 0 0 4px rgba(74, 144, 217, 0.1),
+    0 8px 20px rgba(74, 144, 217, 0.08);
 }
 
 .acx__shell.is-streaming {
-  border-color: var(--brand-accent);
+  border-color: var(--brand-primary);
   box-shadow:
-    0 0 0 3px rgba(92, 201, 193, 0.15),
+    0 0 0 3px rgba(74, 144, 217, 0.12),
     0 8px 20px rgba(0, 0, 0, 0.05);
   animation: acx-breathing 2.5s ease-in-out infinite;
 }
 
 @keyframes acx-breathing {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(92, 201, 193, 0.15), 0 8px 20px rgba(0, 0, 0, 0.05); }
-  50%     { box-shadow: 0 0 0 5px rgba(92, 201, 193, 0.22), 0 8px 20px rgba(0, 0, 0, 0.05); }
+  0%, 100% { box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.12), 0 8px 20px rgba(0, 0, 0, 0.05); }
+  50%     { box-shadow: 0 0 0 5px rgba(74, 144, 217, 0.18), 0 8px 20px rgba(0, 0, 0, 0.05); }
 }
 
 .acx__shell.is-disabled {
@@ -242,9 +244,11 @@ defineExpose({ focus, setText })
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  max-width: 100%;
+  min-width: 0;
   padding: 4px 10px 4px 8px;
-  background: rgba(92, 201, 193, 0.08);
-  border: 1px solid rgba(92, 201, 193, 0.25);
+  background: var(--surface-accent);
+  border: 1px solid rgba(74, 144, 217, 0.24);
   border-radius: 100px;
   animation: acx-kb-in 0.25s ease-out;
 }
@@ -255,11 +259,12 @@ defineExpose({ focus, setText })
 }
 
 .acx__kb-icon {
-  color: var(--brand-accent-dark);
+  color: var(--brand-primary);
   flex-shrink: 0;
 }
 
 .acx__kb-select {
+  min-width: 0;
   font-family: inherit;
   font-size: 0.78rem;
   font-weight: 500;
@@ -286,7 +291,8 @@ defineExpose({ focus, setText })
 }
 
 .acx__spacer {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .acx__status {
@@ -298,15 +304,15 @@ defineExpose({ focus, setText })
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--brand-accent-dark);
+  color: var(--brand-primary-dark);
 }
 
 .acx__status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--brand-accent);
-  box-shadow: 0 0 8px rgba(92, 201, 193, 0.8);
+  background: var(--brand-primary);
+  box-shadow: 0 0 8px rgba(74, 144, 217, 0.45);
   animation: acx-pulse 1s ease-in-out infinite;
 }
 
@@ -346,6 +352,8 @@ defineExpose({ focus, setText })
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px dashed var(--border-subtle);
@@ -355,7 +363,9 @@ defineExpose({ focus, setText })
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 1 1 180px;
   flex-wrap: wrap;
+  min-width: 0;
   font-size: 0.72rem;
   color: var(--text-muted);
 }
@@ -383,6 +393,8 @@ defineExpose({ focus, setText })
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  flex-shrink: 0;
+  margin-left: auto;
   padding: 8px 18px;
   font-family: inherit;
   font-size: 0.84rem;
@@ -401,8 +413,8 @@ defineExpose({ focus, setText })
 }
 
 .acx__shell.is-kb .acx__btn--send {
-  background: linear-gradient(135deg, var(--brand-accent), var(--brand-accent-dark));
-  box-shadow: 0 4px 12px rgba(92, 201, 193, 0.3);
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark));
+  box-shadow: 0 4px 12px rgba(74, 144, 217, 0.25);
 }
 
 .acx__btn--send:hover:not(:disabled) {
@@ -411,7 +423,7 @@ defineExpose({ focus, setText })
 }
 
 .acx__shell.is-kb .acx__btn--send:hover:not(:disabled) {
-  box-shadow: 0 8px 18px rgba(92, 201, 193, 0.4);
+  box-shadow: 0 8px 18px rgba(74, 144, 217, 0.4);
 }
 
 .acx__btn--send:disabled {
@@ -438,6 +450,15 @@ defineExpose({ focus, setText })
   height: 9px;
   background: #ef4444;
   border-radius: 2px;
+}
+
+@media (max-width: 640px) {
+  .acx { padding: 12px; }
+  .acx__shell { padding: 10px 11px 9px; }
+  .acx__meta { gap: 8px; }
+  .acx__kb { max-width: 100%; border-radius: var(--radius-sm); }
+  .acx__kb-select { max-width: min(200px, calc(100vw - 120px)); }
+  .acx__btn { padding: 8px 14px; }
 }
 </style>
 

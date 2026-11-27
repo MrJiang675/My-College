@@ -39,8 +39,11 @@ public class AccountService {
     public void changePassword(CurrentUserService.CurrentUser currentUser, ChangePasswordRequest request) {
         passwordValidator.validate(request.newPassword());
         User user = userMapper.selectById(currentUser.userId());
-        if (user == null || user.getPasswordHash() == null) {
+        if (user == null) {
             throw new BusinessException("用户不存在");
+        }
+        if (!PasswordHasher.isPasswordEnabled(user.getPasswordHash())) {
+            throw new BusinessException("体验账号未设置密码，无需修改");
         }
         if (!passwordHasher.matches(request.currentPassword(), user.getPasswordHash())) {
             throw new BusinessException("当前密码不正确");

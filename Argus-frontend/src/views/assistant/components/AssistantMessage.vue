@@ -92,10 +92,10 @@ function pad(n: number): string {
     <div class="amsg__body">
       <header class="amsg__head">
         <span class="amsg__role">
-          {{ message.role === 'USER' ? 'You' : message.role === 'ASSISTANT' ? 'Argus' : 'Tool' }}
+          {{ message.role === 'USER' ? '我' : message.role === 'ASSISTANT' ? '学习助手' : '工具输出' }}
         </span>
         <span v-if="message.toolMode" class="amsg__mode-tag" :class="`amsg__mode-tag--${message.toolMode.toLowerCase()}`">
-          {{ message.toolMode === 'CHAT' ? 'chat' : 'kb_search' }}
+          {{ message.toolMode === 'CHAT' ? '自由对话' : '知识库' }}
         </span>
         <span class="amsg__time">{{ formatTime(message.createdAt) }}</span>
       </header>
@@ -112,7 +112,7 @@ function pad(n: number): string {
             <polyline points="16 18 22 12 16 6" />
             <polyline points="8 6 2 12 8 18" />
           </svg>
-          <span>tool output</span>
+          <span>工具输出</span>
         </summary>
         <pre class="amsg__tool-body"><code>{{ toolPayload || '(empty)' }}</code></pre>
       </details>
@@ -145,7 +145,7 @@ function pad(n: number): string {
           <span class="amsg__thinking-dot" />
           <span class="amsg__thinking-dot" />
           <span class="amsg__thinking-dot" />
-          <span class="amsg__thinking-label">Agent 正在思考…</span>
+          <span class="amsg__thinking-label">正在整理回答…</span>
         </div>
 
         <div v-else class="amsg__md" :class="{ 'is-streaming': message.streaming }">
@@ -182,9 +182,9 @@ function pad(n: number): string {
 }
 
 .amsg--assistant {
-  background: linear-gradient(180deg, rgba(250, 250, 247, 0.6), rgba(250, 250, 247, 0.3));
-  border-top: 1px solid rgba(15, 23, 42, 0.05);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+  background: var(--surface-subtle);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .amsg--tool {
@@ -211,13 +211,14 @@ function pad(n: number): string {
 }
 
 .amsg--user .amsg__avatar {
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark));
+  box-shadow: 0 2px 6px rgba(74, 144, 217, 0.2);
 }
 
 .amsg--assistant .amsg__avatar {
-  background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent));
-  box-shadow: 0 2px 8px rgba(74, 144, 217, 0.25);
+  background: var(--surface-accent);
+  border: 1px solid rgba(74, 144, 217, 0.22);
+  color: var(--brand-primary-dark);
 }
 
 .amsg--tool .amsg__avatar {
@@ -229,6 +230,7 @@ function pad(n: number): string {
 .amsg__body {
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .amsg__head {
@@ -262,8 +264,8 @@ function pad(n: number): string {
 }
 
 .amsg__mode-tag--kb_search {
-  color: var(--brand-accent-dark);
-  background: rgba(92, 201, 193, 0.12);
+  color: var(--brand-primary-dark);
+  background: var(--surface-accent);
 }
 
 .amsg__time {
@@ -275,10 +277,17 @@ function pad(n: number): string {
 
 /* USER content */
 .amsg__user-text {
+  display: inline-block;
+  max-width: 100%;
+  padding: 11px 14px;
+  border: 1px solid rgba(74, 144, 217, 0.18);
+  border-radius: 4px 12px 12px 12px;
+  background: var(--surface-accent);
   font-size: 0.95rem;
   line-height: 1.65;
   color: var(--text-primary);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -323,6 +332,7 @@ function pad(n: number): string {
   overflow-x: auto;
   max-height: 240px;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -330,11 +340,13 @@ function pad(n: number): string {
 .amsg__thinking {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+  max-width: 100%;
   padding: 8px 14px;
   background: #fff;
   border: 1px solid var(--border-default);
-  border-radius: 100px;
+  border-radius: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
@@ -412,15 +424,21 @@ function pad(n: number): string {
 /* Markdown */
 .amsg__md {
   position: relative;
+  min-width: 0;
   font-size: 0.93rem;
-  line-height: 1.7;
+  line-height: 1.75;
   color: var(--text-primary);
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 .amsg__md-content {
   display: inline;
+  min-width: 0;
 }
+
+.amsg__md :deep(> :first-child) { margin-top: 0; }
+.amsg__md :deep(> :last-child) { margin-bottom: 0; }
 
 /* Streaming cursor */
 .amsg__cursor {
@@ -477,23 +495,25 @@ function pad(n: number): string {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.84em;
   padding: 1px 6px;
-  background: rgba(15, 23, 42, 0.06);
+  background: var(--surface-accent);
   border-radius: 4px;
   color: var(--brand-primary-dark);
+  overflow-wrap: anywhere;
 }
 
 .amsg__md :deep(pre) {
+  max-width: 100%;
   margin: 12px 0;
   padding: 14px 16px;
-  background: #0f172a;
+  background: #1e293b;
   border-radius: 10px;
   overflow-x: auto;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.82rem;
   line-height: 1.6;
   color: #e2e8f0;
-  border: 1px solid #1e293b;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.15);
+  border: 1px solid #334155;
+  box-shadow: var(--shadow-sm);
 }
 
 .amsg__md :deep(pre code) {
@@ -537,10 +557,13 @@ function pad(n: number): string {
 }
 
 .amsg__md :deep(table) {
+  display: block;
   width: 100%;
+  max-width: 100%;
   margin: 12px 0;
   border-collapse: collapse;
   font-size: 0.85rem;
+  overflow-x: auto;
 }
 
 .amsg__md :deep(th),
@@ -566,6 +589,38 @@ function pad(n: number): string {
   .amsg {
     padding: 18px 18px 18px 16px;
     gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .amsg {
+    padding: 16px 12px;
+    gap: 9px;
+  }
+
+  .amsg--tool {
+    padding: 6px 12px;
+  }
+
+  .amsg__avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+
+  .amsg__head {
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+
+  .amsg__user-text {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+
+  .amsg__md :deep(pre) {
+    padding: 12px;
+    font-size: 0.78rem;
   }
 }
 </style>

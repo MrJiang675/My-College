@@ -10,7 +10,7 @@ import {
 } from '@/api/admin-user'
 import { extractApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
-import PageHeaderHero from '@/components/layout/PageHeaderHero.vue'
+import ModuleGuideHeader from '@/components/ModuleGuideHeader.vue'
 
 const authStore = useAuthStore()
 
@@ -78,14 +78,10 @@ function getInitial(name: string): string {
 
 // ── 头像颜色分配 ──
 const AVATAR_COLORS = [
-  'linear-gradient(135deg, #f59e0b, #ea580c)',
-  'linear-gradient(135deg, #6366f1, #4f46e5)',
-  'linear-gradient(135deg, #10b981, #059669)',
-  'linear-gradient(135deg, #64748b, #475569)',
-  'linear-gradient(135deg, #ef4444, #dc2626)',
-  'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-  'linear-gradient(135deg, #06b6d4, #0891b2)',
-  'linear-gradient(135deg, #f97316, #ea580c)',
+  'linear-gradient(135deg, #4A90D9, #3A7BC8)',
+  'linear-gradient(135deg, #7AB8F5, #4A90D9)',
+  'linear-gradient(135deg, #3A7BC8, #2563A6)',
+  'linear-gradient(135deg, #93C5F8, #4A90D9)',
 ]
 
 function getAvatarColor(index: number): string {
@@ -193,12 +189,8 @@ if (typeof window !== 'undefined') {
 
 <template>
   <div class="user-mgmt-page">
-    <!-- ── 页面标题 ── -->
-    <PageHeaderHero
-      eyebrow="系统管理"
-      title="用户管理"
-      description="管理系统用户账号、角色与状态，仅系统管理员可访问"
-    >
+    <!-- ── 页面标题与使用说明 ── -->
+    <ModuleGuideHeader guide-key="admin-users" eyebrow="系统管理">
       <template #actions>
         <button class="action-btn" @click="loadUsers">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -207,7 +199,7 @@ if (typeof window !== 'undefined') {
           刷新
         </button>
       </template>
-    </PageHeaderHero>
+    </ModuleGuideHeader>
 
     <!-- ── 反馈消息 ── -->
     <div v-if="feedbackMsg || errorMsg" class="feedback-area">
@@ -470,6 +462,7 @@ if (typeof window !== 'undefined') {
 /* ════════════ Page Layout ════════════ */
 .user-mgmt-page {
   width: 100%;
+  min-width: 0;
   min-height: 100%;
 }
 
@@ -506,6 +499,7 @@ if (typeof window !== 'undefined') {
   border-radius: var(--radius-sm);
   font-size: 0.86rem;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .feedback--success {
@@ -549,6 +543,7 @@ if (typeof window !== 'undefined') {
 /* ════════════ Filter Tabs ════════════ */
 .filter-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 20px;
 }
@@ -613,7 +608,7 @@ if (typeof window !== 'undefined') {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: rgba(74, 144, 217, 0.06);
+  background: var(--surface-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -636,10 +631,12 @@ if (typeof window !== 'undefined') {
 
 /* ════════════ User Table ════════════ */
 .user-table-wrapper {
+  width: 100%;
+  min-width: 0;
   background: var(--surface-white);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 /* 表头 */
@@ -654,6 +651,7 @@ if (typeof window !== 'undefined') {
 }
 
 .th {
+  min-width: 0;
   font-size: 0.74rem;
   font-weight: 700;
   color: var(--text-muted);
@@ -664,6 +662,7 @@ if (typeof window !== 'undefined') {
 /* 数据行 */
 .user-row {
   display: grid;
+  min-width: 0;
   grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.5fr) minmax(90px, 0.8fr) minmax(80px, 0.7fr) minmax(120px, 1fr) minmax(100px, 0.8fr);
   gap: 16px;
   align-items: center;
@@ -681,6 +680,8 @@ if (typeof window !== 'undefined') {
 }
 
 /* 用户信息列 */
+.td { min-width: 0; }
+
 .td--user {
   display: flex;
   align-items: center;
@@ -722,8 +723,10 @@ if (typeof window !== 'undefined') {
   font-size: 0.76rem;
   color: var(--text-muted);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 3px 6px;
+  overflow-wrap: anywhere;
 }
 
 .user-id {
@@ -999,11 +1002,13 @@ if (typeof window !== 'undefined') {
 
 .detail-field dd {
   margin: 0;
+  min-width: 0;
   font-size: 0.9rem;
   color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 6px;
+  overflow-wrap: anywhere;
 }
 
 .detail-field dd code {
@@ -1139,5 +1144,12 @@ if (typeof window !== 'undefined') {
   .td--role {
     display: none;
   }
+
+  .user-table-header,
+  .user-row {
+    padding-inline: 14px;
+  }
+
+  .detail-panel__body { padding-inline: 18px; }
 }
 </style>

@@ -12,4 +12,7 @@ public interface UserMapper extends BaseMapper<User> {
 
     /** 登录时根据用户名或邮箱查找用户，加行锁 */
     List<User> selectByLoginIdForUpdate(@Param("loginId") String loginId);
+
+    /** 自动开户时忽略唯一约束冲突，随后重新查询已有用户 */
+    int insertUserIfAbsent(User user);
 }

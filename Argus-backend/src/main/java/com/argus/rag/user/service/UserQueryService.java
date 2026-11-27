@@ -1,5 +1,6 @@
 package com.argus.rag.user.service;
 
+import com.argus.rag.auth.service.PasswordHasher;
 import com.argus.rag.common.exception.BusinessException;
 import com.argus.rag.user.mapper.UserMapper;
 import com.argus.rag.user.model.entity.User;
@@ -58,7 +59,8 @@ public class UserQueryService {
         if (user == null) return null;
         return new UserRecord(user.getId(), user.getUserCode(),
                 user.getDisplayName(), user.getSystemRole(),
-                user.getStatus(), Boolean.TRUE.equals(user.getMustChangePassword()));
+                user.getStatus(), Boolean.TRUE.equals(user.getMustChangePassword()),
+                PasswordHasher.isPasswordEnabled(user.getPasswordHash()));
     }
 
     /** 供跨模块查询的用户精简信息 */
@@ -68,7 +70,8 @@ public class UserQueryService {
             String displayName,
             com.argus.rag.common.enums.SystemRole systemRole,
             com.argus.rag.common.enums.UserStatus status,
-            boolean mustChangePassword
+            boolean mustChangePassword,
+            boolean passwordEnabled
     ) {}
 
     /** 将 User 实体转为管理端 VO */

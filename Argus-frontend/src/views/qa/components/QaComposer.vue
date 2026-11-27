@@ -126,6 +126,7 @@ defineExpose({ focus, setText })
 }
 
 .qa-composer__wrap {
+  min-width: 0;
   max-width: 860px;
   margin: 0 auto;
 }
@@ -134,27 +135,36 @@ defineExpose({ focus, setText })
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  max-width: 100%;
+  min-width: 0;
   margin-bottom: 8px;
   padding: 3px 12px;
-  background: rgba(92, 201, 193, 0.08);
-  border: 1px solid rgba(92, 201, 193, 0.2);
+  background: var(--surface-accent);
+  border: 1px solid rgba(74, 144, 217, 0.2);
   border-radius: 100px;
   font-size: 0.76rem;
   color: var(--text-secondary);
+  overflow-wrap: anywhere;
 }
 
 .qa-composer__context-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
+  flex-shrink: 0;
   border-radius: 50%;
-  background: var(--brand-accent);
+  background: var(--brand-primary);
   animation: pulse-ctx 2s ease-in-out infinite;
 }
 
 @keyframes pulse-ctx {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+.qa-composer__context-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .qa-composer__context-text strong {
@@ -164,6 +174,7 @@ defineExpose({ focus, setText })
 
 /* Shell */
 .qa-composer__shell {
+  min-width: 0;
   background: #fff;
   border: 1.5px solid var(--border-default);
   border-radius: 16px;
@@ -214,6 +225,8 @@ defineExpose({ focus, setText })
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px dashed var(--border-subtle);
@@ -223,7 +236,9 @@ defineExpose({ focus, setText })
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 1 1 180px;
   flex-wrap: wrap;
+  min-width: 0;
   font-size: 0.72rem;
   color: var(--text-muted);
 }
@@ -255,6 +270,8 @@ defineExpose({ focus, setText })
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  flex-shrink: 0;
+  margin-left: auto;
   padding: 8px 18px;
   font-family: inherit;
   font-size: 0.84rem;
@@ -297,5 +314,12 @@ defineExpose({ focus, setText })
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .qa-composer { padding: 12px; }
+  .qa-composer__shell { padding: 10px 11px 9px; }
+  .qa-composer__context { border-radius: var(--radius-sm); }
+  .qa-composer__send { padding: 8px 14px; }
 }
 </style>

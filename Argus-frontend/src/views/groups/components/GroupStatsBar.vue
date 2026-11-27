@@ -128,14 +128,14 @@ const emit = defineEmits<{
 }
 
 .stats-bar__card:hover {
-  border-color: rgba(99, 102, 241, 0.3);
+  border-color: rgba(74, 144, 217, 0.3);
   box-shadow: 0 10px 24px rgba(0,0,0,0.06);
   transform: translateY(-2px);
 }
 
 .stats-bar__card.is-active {
   border-color: var(--brand-primary);
-  background: #f8fafc;
+  background: var(--surface-accent);
   box-shadow: 0 0 0 1px var(--brand-primary);
 }
 
@@ -168,10 +168,10 @@ const emit = defineEmits<{
   height: 20px;
 }
 
-.stats-icon--blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-.stats-icon--green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-.stats-icon--amber { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-.stats-icon--purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.stats-icon--blue { background: var(--surface-accent); color: var(--brand-primary); }
+.stats-icon--green { background: var(--surface-accent); color: var(--brand-primary); }
+.stats-icon--amber { background: var(--surface-accent); color: var(--brand-primary); }
+.stats-icon--purple { background: var(--surface-accent); color: var(--brand-primary); }
 
 .stats-card__bottom {
   display: flex;

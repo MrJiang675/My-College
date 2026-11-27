@@ -65,7 +65,7 @@ function formatTime(ts: number): string {
 
     <div class="qa-msg__body">
       <header class="qa-msg__head">
-        <span class="qa-msg__role">{{ message.role === 'user' ? 'You' : 'Argus' }}</span>
+        <span class="qa-msg__role">{{ message.role === 'user' ? '我' : '学习助手' }}</span>
         <span class="qa-msg__time">{{ formatTime(message.createdAt) }}</span>
       </header>
 
@@ -149,9 +149,9 @@ function formatTime(ts: number): string {
 }
 
 .qa-msg--assistant {
-  background: linear-gradient(180deg, rgba(250, 250, 247, 0.6), rgba(250, 250, 247, 0.3));
-  border-top: 1px solid rgba(15, 23, 42, 0.05);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+  background: var(--surface-subtle);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .qa-msg__avatar {
@@ -171,18 +171,20 @@ function formatTime(ts: number): string {
 }
 
 .qa-msg--user .qa-msg__avatar {
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark));
+  box-shadow: 0 2px 6px rgba(74, 144, 217, 0.2);
 }
 
 .qa-msg--assistant .qa-msg__avatar {
-  background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent));
-  box-shadow: 0 2px 8px rgba(74, 144, 217, 0.25);
+  background: var(--surface-accent);
+  border: 1px solid rgba(74, 144, 217, 0.22);
+  color: var(--brand-primary-dark);
 }
 
 .qa-msg__body {
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .qa-msg__head {
@@ -208,10 +210,17 @@ function formatTime(ts: number): string {
 
 /* User text */
 .qa-msg__user-text {
+  display: inline-block;
+  max-width: 100%;
+  padding: 11px 14px;
+  border: 1px solid rgba(74, 144, 217, 0.18);
+  border-radius: 4px 12px 12px 12px;
+  background: var(--surface-accent);
   font-size: 0.95rem;
   line-height: 1.65;
   color: var(--text-primary);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
@@ -219,11 +228,13 @@ function formatTime(ts: number): string {
 .qa-msg__thinking {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+  max-width: 100%;
   padding: 8px 14px;
   background: #fff;
   border: 1px solid var(--border-default);
-  border-radius: 100px;
+  border-radius: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
@@ -282,6 +293,7 @@ function formatTime(ts: number): string {
 .qa-msg__refused-head {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 6px;
 }
@@ -317,11 +329,16 @@ function formatTime(ts: number): string {
 
 /* Markdown styles — scoped :deep for v-html */
 .qa-msg__markdown {
+  min-width: 0;
   font-size: 0.93rem;
-  line-height: 1.7;
+  line-height: 1.75;
   color: var(--text-primary);
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
+
+.qa-msg__markdown :deep(> :first-child) { margin-top: 0; }
+.qa-msg__markdown :deep(> :last-child) { margin-bottom: 0; }
 
 .qa-msg__markdown :deep(h1),
 .qa-msg__markdown :deep(h2),
@@ -365,23 +382,25 @@ function formatTime(ts: number): string {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.84em;
   padding: 1px 6px;
-  background: rgba(15, 23, 42, 0.06);
+  background: var(--surface-accent);
   border-radius: 4px;
   color: var(--brand-primary-dark);
+  overflow-wrap: anywhere;
 }
 
 .qa-msg__markdown :deep(pre) {
+  max-width: 100%;
   margin: 12px 0;
   padding: 14px 16px;
-  background: #0f172a;
+  background: #1e293b;
   border-radius: 10px;
   overflow-x: auto;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.82rem;
   line-height: 1.6;
   color: #e2e8f0;
-  border: 1px solid #1e293b;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.15);
+  border: 1px solid #334155;
+  box-shadow: var(--shadow-sm);
 }
 
 .qa-msg__markdown :deep(pre code) {
@@ -425,10 +444,13 @@ function formatTime(ts: number): string {
 }
 
 .qa-msg__markdown :deep(table) {
+  display: block;
   width: 100%;
+  max-width: 100%;
   margin: 12px 0;
   border-collapse: collapse;
   font-size: 0.85rem;
+  overflow-x: auto;
 }
 
 .qa-msg__markdown :deep(th),
@@ -454,6 +476,29 @@ function formatTime(ts: number): string {
   .qa-msg {
     padding: 18px 18px 18px 16px;
     gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .qa-msg {
+    padding: 16px 12px;
+    gap: 9px;
+  }
+
+  .qa-msg__avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+  }
+
+  .qa-msg__user-text {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+
+  .qa-msg__markdown :deep(pre) {
+    padding: 12px;
+    font-size: 0.78rem;
   }
 }
 </style>

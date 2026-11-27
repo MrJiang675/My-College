@@ -34,7 +34,7 @@ function formatDate(dateStr?: string) {
     <EmptyState
       v-else-if="items.length === 0"
       title="暂无待处理邀请"
-      description="当其他用户邀请你加入小组时，邀请会显示在这里。你也可以主动点击上方「加入小组」提交申请。"
+      description="当其他用户邀请你加入课程组或项目组时，邀请会显示在这里；也可以主动提交加入申请。"
     />
 
     <!-- Card grid -->
@@ -80,7 +80,7 @@ function formatDate(dateStr?: string) {
 <style scoped>
 .tab-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 24px;
 }
 
@@ -116,7 +116,7 @@ function formatDate(dateStr?: string) {
 
 .action-btn--primary:hover {
   background: var(--brand-primary-dark);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 4px 12px rgba(74, 144, 217, 0.2);
 }
 
 .action-btn--primary:disabled {

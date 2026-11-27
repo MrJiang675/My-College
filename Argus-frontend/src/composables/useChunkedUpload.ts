@@ -1,4 +1,8 @@
 import { ref } from 'vue'
+import { completeDocumentUpload, initDocumentUpload, uploadDocumentChunk } from '@/api/document'
+import { extractApiError } from '@/api/http'
+
+const CHUNK_SIZE = 5 * 1024 * 1024
 
 export function useChunkedUpload() {
   const isUploading = ref(false)
@@ -7,21 +11,126 @@ export function useChunkedUpload() {
   const stage = ref('')
   const hashingProgress = ref('')
   const chunkProgress = ref({ uploaded: 0, total: 0 })
+  let abortController: AbortController | null = null
 
-  const uploadFile = async (file: File, groupId: number) => {
-    throw new Error('已禁用分片上传，请上传小文件')
+  const uploadFile = async (file: File, groupId: number): Promise<number | null> => {
+    reset()
+    isUploading.value = true
+    stage.value = 'hashing'
+    hashingProgress.value = '正在计算文件指纹...'
+    const controller = new AbortController()
+    abortController = controller
+
+    try {
+      const fileHash = await sha256(file, controller.signal)
+      ensureNotAborted(controller.signal)
+      hashingProgress.value = ''
+      stage.value = 'init'
+
+      const requestedChunkSize = Math.min(CHUNK_SIZE, file.size)
+      const requestedChunkCount = Math.ceil(file.size / requestedChunkSize)
+      const init = await initDocumentUpload({
+        groupId,
+        fileName: file.name,
+        fileSize: file.size,
+        contentType: file.type || 'application/octet-stream',
+        fileHash,
+        chunkSize: requestedChunkSize,
+        chunkCount: requestedChunkCount,
+      }, controller.signal)
+
+      ensureNotAborted(controller.signal)
+      if (init.instantUpload) {
+        if (init.documentId === null) {
+          throw new Error('秒传响应缺少文档 ID')
+        }
+        progress.value = 100
+        stage.value = ''
+        return init.documentId
+      }
+      if (!init.uploadId) {
+        throw new Error('上传初始化失败')
+      }
+
+      const chunkSize = init.chunkSize ?? requestedChunkSize
+      const chunkCount = init.chunkCount ?? requestedChunkCount
+      const uploadedChunks = new Set(init.uploadedChunks)
+      chunkProgress.value = { uploaded: uploadedChunks.size, total: chunkCount }
+      progress.value = Math.round((uploadedChunks.size / chunkCount) * 100)
+      stage.value = 'uploading'
+
+      for (let index = 0; index < chunkCount; index++) {
+        ensureNotAborted(controller.signal)
+        if (uploadedChunks.has(index)) continue
+
+        const start = index * chunkSize
+        const chunk = file.slice(start, Math.min(file.size, start + chunkSize))
+        const chunkHash = await sha256(chunk, controller.signal)
+        await uploadDocumentChunk({
+          uploadId: init.uploadId,
+          chunkIndex: index,
+          chunkHash,
+          chunk,
+        }, undefined, controller.signal)
+
+        uploadedChunks.add(index)
+        chunkProgress.value = { uploaded: uploadedChunks.size, total: chunkCount }
+        progress.value = Math.round((uploadedChunks.size / chunkCount) * 100)
+      }
+
+      stage.value = 'completing'
+      const documentId = await completeDocumentUpload(init.uploadId, controller.signal)
+      progress.value = 100
+      stage.value = ''
+      return documentId
+    } catch (err) {
+      stage.value = ''
+      error.value = controller.signal.aborted
+        ? '上传已取消'
+        : extractApiError(err, '分片上传失败')
+      return null
+    } finally {
+      if (abortController === controller) {
+        abortController = null
+      }
+      isUploading.value = false
+      hashingProgress.value = ''
+    }
   }
 
   const reset = () => {
+    abortController?.abort()
+    abortController = null
     isUploading.value = false
     progress.value = 0
     error.value = ''
     stage.value = ''
+    hashingProgress.value = ''
+    chunkProgress.value = { uploaded: 0, total: 0 }
   }
 
   const cancel = () => {
-    isUploading.value = false
+    abortController?.abort()
+    error.value = '上传已取消'
+    stage.value = ''
   }
 
   return { isUploading, progress, error, stage, hashingProgress, chunkProgress, uploadFile, reset, cancel }
+}
+
+async function sha256(data: Blob, signal: AbortSignal): Promise<string> {
+  ensureNotAborted(signal)
+  if (!globalThis.crypto?.subtle) {
+    throw new Error('当前浏览器不支持文件校验，请使用 HTTPS 或最新版浏览器')
+  }
+  const buffer = await data.arrayBuffer()
+  ensureNotAborted(signal)
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', buffer)
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+function ensureNotAborted(signal: AbortSignal) {
+  if (signal.aborted) {
+    throw new DOMException('上传已取消', 'AbortError')
+  }
 }

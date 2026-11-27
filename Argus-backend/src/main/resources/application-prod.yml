@@ -1,0 +1,85 @@
+server:
+  port: 10001
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: argus-service
+  autoconfigure:
+    exclude:
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeChatAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeEmbeddingAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAgentAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeImageAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeVideoAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioSpeechAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAudioTranscriptionAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeRerankAutoConfiguration
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  ai:
+    model:
+      chat: zhipuai
+      embedding: zhipuai
+    zhipuai:
+      api-key: ${ZHIPUAI_API_KEY}
+      chat:
+        options:
+          model: glm-4-flash
+      embedding:
+        options:
+          dimensions: 1024
+          model: embedding-2
+          truncate: true
+    vectorstore:
+      pgvector:
+        dimensions: 1024
+        index-type: hnsw
+        distance-type: cosine_distance
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+
+storage:
+  minio:
+    endpoint: ${MINIO_ENDPOINT}
+    access-key: ${MINIO_ACCESS_KEY}
+    secret-key: ${MINIO_SECRET_KEY}
+    bucket: ${MINIO_BUCKET}
+
+argus:
+  rag:
+    cors:
+      allowed-origins: ${ARGUS_RAG_CORS_ALLOWED_ORIGINS}
+    auth:
+      jwt-secret: ${ARGUS_RAG_JWT_SECRET}
+      issuer: argus-rag
+      access-token-expire-minutes: 30
+      refresh-token-expire-days: 14
+      refresh-cookie-name: ARGUS_RAG_REFRESH_TOKEN
+      refresh-cookie-same-site: ${ARGUS_RAG_AUTH_REFRESH_COOKIE_SAME_SITE:None}
+      refresh-cookie-secure: ${ARGUS_RAG_AUTH_REFRESH_COOKIE_SECURE:true}
+
+elasticsearch:
+  host: ${ES_HOST}
+  port: ${ES_PORT}
+  scheme: ${ES_SCHEME}
+  index-name: ${ES_INDEX_NAME}
+
+ingestion:
+  chunking:
+    target-tokens: 240
+    max-tokens: 320
+    overlap-tokens: 32
+  vector:
+    add-batch-size: 9
+
+youcom:
+  search:
+    enabled: ${YOUCOM_SEARCH_ENABLED:false}
+    api-key: ${YOUCOM_API_KEY:}
+    top-k: 10

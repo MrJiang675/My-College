@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { extractApiError } from '@/api/http'
 import type { LoginPayload } from '@/api/auth'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -12,12 +13,26 @@ const form = reactive<LoginPayload>({
   loginId: '',
   password: '',
 })
+const experienceForm = reactive({
+  username: '',
+})
+const showExperience = ref(false)
+const passwordInput = ref<HTMLInputElement | null>(null)
+const experienceInput = ref<HTMLInputElement | null>(null)
 
 const loading = ref(false)
 const errorMsg = ref('')
+const experienceError = ref('')
+
+function openExperienceForm() {
+  showExperience.value = true
+  errorMsg.value = ''
+  experienceError.value = ''
+  nextTick(() => experienceInput.value?.focus())
+}
 
 async function handleLogin() {
-  if (!form.loginId.trim() || !form.password.trim()) {
+  if (!form.loginId.trim() || !form.password?.trim()) {
     errorMsg.value = '请输入登录标识和密码'
     return
   }
@@ -35,10 +50,42 @@ async function handleLogin() {
     loading.value = false
   }
 }
+
+async function handleExperienceLogin() {
+  if (!experienceForm.username.trim()) {
+    experienceError.value = '请输入用户名'
+    return
+  }
+
+  const username = experienceForm.username.trim()
+  experienceError.value = ''
+  loading.value = true
+  try {
+    await authStore.login({ loginId: username })
+    router.push(authStore.resolveLandingPath())
+  } catch (err) {
+    const message = extractApiError(err, '登录失败')
+    if (message === '该账号需要密码登录') {
+      form.loginId = username
+      form.password = ''
+      showExperience.value = false
+      errorMsg.value = '该账号需要密码，请在登录表单中输入密码'
+      await nextTick()
+      passwordInput.value?.focus()
+    } else {
+      experienceError.value = message
+    }
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 <template>
   <div class="login-page">
+    <div class="login-theme-toggle">
+      <ThemeToggle />
+    </div>
     <div class="login-card">
       <a href="/" class="login-logo">
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
@@ -72,6 +119,7 @@ async function handleLogin() {
         <div class="input-group">
           <label>密码</label>
           <input
+            ref="passwordInput"
             v-model="form.password"
             type="password"
             placeholder="输入密码"
@@ -87,9 +135,30 @@ async function handleLogin() {
         </button>
       </form>
 
-      <p class="form-footer">
-        还没有账号？<a href="/">返回首页注册</a>
-      </p>
+      <button type="button" class="btn-experience" :disabled="loading" @click="openExperienceForm">
+        体验用户
+      </button>
+
+      <form v-if="showExperience" class="login-form experience-form" @submit.prevent="handleExperienceLogin">
+        <div class="input-group">
+          <label>体验用户名</label>
+          <input
+            ref="experienceInput"
+            v-model="experienceForm.username"
+            type="text"
+            placeholder="输入一个用户名"
+            autocomplete="username"
+          />
+        </div>
+        <p class="experience-hint">无需注册和密码，输入用户名即可直接进入。</p>
+        <p v-if="experienceError" class="form-error">{{ experienceError }}</p>
+        <button type="submit" class="btn-login" :disabled="loading">
+          <span v-if="!loading">进入体验</span>
+          <span v-else>登录中...</span>
+        </button>
+      </form>
+
+      <p class="form-footer">体验账号会自动创建，管理员账号仍需密码验证。</p>
     </div>
   </div>
 </template>
@@ -100,8 +169,15 @@ async function handleLogin() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #f0f6fc 0%, #f8fafc 60%, #ffffff 100%);
+  background: var(--hero-background);
   padding: 40px 24px;
+}
+
+.login-theme-toggle {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: 10;
 }
 
 .login-card {
@@ -170,7 +246,7 @@ async function handleLogin() {
 }
 
 .input-group input::placeholder {
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .input-group input:focus {
@@ -206,6 +282,41 @@ async function handleLogin() {
   cursor: not-allowed;
 }
 
+.btn-experience {
+  width: 100%;
+  margin-top: 12px;
+  padding: 11px 24px;
+  border: 1.5px solid rgba(74, 144, 217, 0.35);
+  border-radius: var(--radius-sm);
+  background: var(--surface-accent);
+  color: var(--brand-primary-dark);
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-experience:hover:not(:disabled) {
+  border-color: var(--brand-primary);
+  background: var(--surface-accent-strong);
+}
+
+.btn-experience:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.experience-form {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--border-default);
+}
+
+.experience-hint {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .form-footer {
   margin-top: 24px;
   text-align: center;
@@ -213,12 +324,4 @@ async function handleLogin() {
   color: var(--text-secondary);
 }
 
-.form-footer a {
-  color: var(--brand-primary);
-  font-weight: 600;
-}
-
-.form-footer a:hover {
-  text-decoration: underline;
-}
 </style>

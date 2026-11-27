@@ -12,5 +12,15 @@
         for update
     </select>
 
+    <insert id="insertUserIfAbsent" parameterType="com.argus.rag.user.model.entity.User">
+        insert into users (
+            user_code, username, email, display_name, password_hash,
+            system_role, status, must_change_password
+        ) values (
+            #{userCode}, #{username}, #{email}, #{displayName}, #{passwordHash},
+            #{systemRole}, #{status}, #{mustChangePassword}
+        )
+        on conflict do nothing
+    </insert>
 
 </mapper>

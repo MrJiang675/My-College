@@ -86,9 +86,9 @@ function set(m: AssistantToolMode) {
 
 .mode-switcher__slider.to-right {
   transform: translateX(100%);
-  background: linear-gradient(135deg, var(--brand-accent), var(--brand-accent-dark));
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-dark));
   box-shadow:
-    0 3px 10px rgba(92, 201, 193, 0.3),
+    0 3px 10px rgba(74, 144, 217, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 

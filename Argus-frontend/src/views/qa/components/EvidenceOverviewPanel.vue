@@ -103,8 +103,8 @@ function chunkRange(start: number | null, end: number | null, fallback: number |
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #16a34a;
-  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
+  background: var(--brand-primary);
+  box-shadow: 0 0 0 4px rgba(74, 144, 217, 0.12);
 }
 
 .evidence-overview__stats {

@@ -68,7 +68,7 @@ class QaServiceTest {
                 .build();
 
         when(currentUserService.getRequiredCurrentUser())
-                .thenReturn(new CurrentUserService.CurrentUser(5L, "u001", "Alice", SystemRole.USER, false));
+                .thenReturn(new CurrentUserService.CurrentUser(5L, "u001", "Alice", SystemRole.USER, false, true));
         when(qaChatService.askWithUsage(1L, "文档上传流程是什么？"))
                 .thenReturn(new QaChatService.AskResult(
                         response,
@@ -116,7 +116,7 @@ class QaServiceTest {
                 .build();
 
         when(currentUserService.getRequiredCurrentUser())
-                .thenReturn(new CurrentUserService.CurrentUser(5L, "u001", "Alice", SystemRole.USER, false));
+                .thenReturn(new CurrentUserService.CurrentUser(5L, "u001", "Alice", SystemRole.USER, false, true));
         when(qaChatService.askStream(eq(1L), eq("How to upload a document?"), any()))
                 .thenAnswer(invocation -> {
                     @SuppressWarnings("unchecked")

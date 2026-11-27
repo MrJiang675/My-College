@@ -1,6 +1,7 @@
 package com.argus.rag.document.service;
 
 import com.argus.rag.auth.CurrentUserService;
+import com.argus.rag.common.enums.SystemRole;
 import com.argus.rag.document.mapper.DocumentMapper;
 import com.argus.rag.document.mapper.DocumentUploadChunkMapper;
 import com.argus.rag.document.mapper.DocumentUploadSessionMapper;
@@ -69,7 +70,7 @@ class DocumentUploadServiceTest {
         request.setFile(file);
         when(objectStorageService.getDefaultBucket()).thenReturn("argus-rag-documents");
         when(groupMembershipService.requireGroupOwner(1L))
-                .thenReturn(new CurrentUserService.CurrentUser(1L, "admin", "ADMIN"));
+                .thenReturn(new CurrentUserService.CurrentUser(1L, "admin", "ADMIN", SystemRole.ADMIN, false, true));
         when(documentMapper.insert(any(DocumentEntity.class))).thenAnswer(invocation -> {
             DocumentEntity document = invocation.getArgument(0);
             document.setId(99L);

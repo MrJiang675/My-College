@@ -24,8 +24,8 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const dragging = ref(false)
 
 const allowedExts = ['.txt', '.md', '.pdf', '.docx']
+const DIRECT_UPLOAD_MAX_SIZE = 10 * 1024 * 1024
 const MAX_FILE_SIZE = 256 * 1024 * 1024
-const CHUNKED_THRESHOLD = 10 * 1024 * 1024
 
 const chunked = reactive(useChunkedUpload())
 
@@ -115,9 +115,12 @@ async function handleUpload() {
   errorMsg.value = ''
   progress.value = 0
   try {
-    // if (file.value.size > CHUNKED_THRESHOLD) {
-    //   await chunked.uploadFile(file.value, props.groupId)
-    // } else {
+    chunked.reset()
+    if (file.value.size > DIRECT_UPLOAD_MAX_SIZE) {
+      const documentId = await chunked.uploadFile(file.value, props.groupId)
+      progress.value = chunked.progress
+      if (documentId === null) return
+    } else {
       await uploadDocument({
         groupId: props.groupId,
         file: file.value,
@@ -127,7 +130,7 @@ async function handleUpload() {
           }
         },
       })
-    // }
+    }
     success.value = true
     file.value = null
     setTimeout(() => {
@@ -204,7 +207,7 @@ function formatSize(bytes: number): string {
             <strong>点击选择文件</strong>
             <span>或将文件拖拽到此处</span>
           </p>
-          <p class="upload-dialog__zone-hint">支持 TXT · MD · PDF · DOCX，最大 256 MB</p>
+          <p class="upload-dialog__zone-hint">支持 TXT · MD · PDF · DOCX，最大 256 MB，超过 10 MB 自动分片</p>
         </template>
         <template v-else>
           <div class="upload-dialog__file-icon">

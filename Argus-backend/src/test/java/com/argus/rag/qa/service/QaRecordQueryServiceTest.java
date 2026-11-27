@@ -39,7 +39,7 @@ class QaRecordQueryServiceTest {
     @DisplayName("should return evidence overview when loading history detail")
     void shouldReturnEvidenceOverviewWhenLoadingHistoryDetail() {
         when(currentUserService.getRequiredCurrentUser()).thenReturn(
-                new CurrentUserService.CurrentUser(5L, "u001", "Alice", SystemRole.USER, false));
+                new CurrentUserService.CurrentUser(5L, "u001", "Alice", SystemRole.USER, false, true));
         when(qaRecordMapper.selectVisibleRecord(77L, 5L, false)).thenReturn(record());
         when(qaRecordCitationMapper.selectByRecordId(77L)).thenReturn(List.of(
                 citation(10L, 101L, 0, "product.md", 0.91D, "BOTH", "product goals"),
@@ -69,7 +69,7 @@ class QaRecordQueryServiceTest {
     @DisplayName("should delete visible history record and citation snapshots")
     void shouldDeleteVisibleHistoryRecordAndCitationSnapshots() {
         when(currentUserService.getRequiredCurrentUser()).thenReturn(
-                new CurrentUserService.CurrentUser(5L, "u001", "Alice", SystemRole.USER, false));
+                new CurrentUserService.CurrentUser(5L, "u001", "Alice", SystemRole.USER, false, true));
         when(qaRecordMapper.selectVisibleRecord(77L, 5L, false)).thenReturn(record());
         QaRecordQueryService service = new QaRecordQueryService(
                 currentUserService,

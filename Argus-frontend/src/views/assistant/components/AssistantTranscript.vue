@@ -67,7 +67,7 @@ watch(
     <!-- Sticky header -->
     <header class="atx__head">
       <div class="atx__head-left">
-        <span class="atx__eyebrow">Active Thread</span>
+        <span class="atx__eyebrow">当前会话</span>
         <h2 class="atx__title" :title="sessionTitle">
           <span class="atx__title-pulse" />
           {{ sessionTitle || '未命名会话' }}
@@ -180,16 +180,10 @@ watch(
   display: inline-block;
   width: 7px;
   height: 7px;
-  border-radius: 50%;
-  background: var(--brand-accent);
-  box-shadow: 0 0 10px rgba(92, 201, 193, 0.6);
   flex-shrink: 0;
-  animation: atx-pulse 2.2s ease-in-out infinite;
-}
-
-@keyframes atx-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.88); }
+  border-radius: 50%;
+  background: var(--brand-primary);
+  box-shadow: 0 0 0 4px rgba(74, 144, 217, 0.1);
 }
 
 .atx__head-right {
@@ -199,17 +193,14 @@ watch(
   flex-shrink: 0;
 }
 
-/* Scroll area with grid paper background (matches Qa) */
+/* Scrollable conversation area */
 .atx__scroll {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--border-default) transparent;
-  background-image:
-    linear-gradient(rgba(74, 144, 217, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 144, 217, 0.04) 1px, transparent 1px);
-  background-size: 28px 28px;
-  background-position: 0 0;
+  background: var(--surface-subtle);
 }
 
 .atx__scroll::-webkit-scrollbar {
@@ -226,9 +217,12 @@ watch(
 }
 
 .atx__thread {
+  width: 100%;
   max-width: 900px;
+  min-width: 0;
   margin: 0 auto;
   padding: 8px 0 24px;
+  background: var(--surface-white);
 }
 
 /* Loading */
@@ -285,5 +279,20 @@ watch(
 .atx__scroll-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 24px rgba(74, 144, 217, 0.4);
+}
+
+@media (max-width: 640px) {
+  .atx__head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 13px 12px 11px;
+  }
+
+  .atx__head-left { width: 100%; }
+  .atx__title { max-width: 100%; white-space: normal; line-height: 1.45; overflow-wrap: anywhere; }
+  .atx__title-pulse { margin-top: 6px; }
+  .atx__head-right { width: 100%; }
+  .atx__scroll-btn { right: 12px; bottom: 12px; }
 }
 </style>

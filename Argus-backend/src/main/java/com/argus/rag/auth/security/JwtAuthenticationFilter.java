@@ -31,7 +31,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
     /** 无需认证的路径 */
     private static final String LOGIN_PATH = "/api/auth/login";
-    private static final String REGISTER_PATH = "/api/auth/register";
     private static final String REFRESH_PATH = "/api/auth/refresh";
     private static final String LOGOUT_PATH = "/api/auth/logout";
 
@@ -92,7 +91,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String requestUri = request.getRequestURI();
         return LOGIN_PATH.equals(requestUri)
-                || REGISTER_PATH.equals(requestUri)
                 || REFRESH_PATH.equals(requestUri)
                 || LOGOUT_PATH.equals(requestUri);
     }

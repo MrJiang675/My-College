@@ -4,6 +4,7 @@
    Design Tokens — Fresh Professional Light
    ═══════════════════════════════════════ */
 :root {
+  color-scheme: light;
   /* Element Plus overrides */
   --el-color-primary: #4A90D9;
   --el-color-primary-light-3: #7AB8F5;
@@ -30,6 +31,18 @@
   --surface-muted: #f1f5f9;
   --surface-accent: #edf5fd;
   --surface-footer: #1e293b;
+  --page-background: #f5f8fc;
+
+  /* Semantic states */
+  --status-ready: #15803d;
+  --status-ready-bg: #ecfdf3;
+  --status-processing: #1d4ed8;
+  --status-processing-bg: #eff6ff;
+  --status-warning: #b45309;
+  --status-warning-bg: #fffbeb;
+  --status-error: #b91c1c;
+  --status-error-bg: #fef2f2;
+  --focus-ring: 0 0 0 3px rgba(74, 144, 217, 0.18);
 
   /* Text */
   --text-primary: #1e293b;
@@ -42,6 +55,13 @@
   --border-default: #e2e8f0;
   --border-subtle: #f1f5f9;
   --border-on-dark: rgba(255, 255, 255, 0.08);
+  --surface-glass: rgba(255, 255, 255, 0.92);
+  --surface-accent-strong: #deedfc;
+  --sidebar-background: #f5f8fc;
+  --hero-background: linear-gradient(180deg, #f0f6fc 0%, #f8fafc 60%, #ffffff 100%);
+  --hero-grid-line: rgba(74, 144, 217, 0.04);
+  --hero-glow-blue: rgba(74, 144, 217, 0.12);
+  --hero-glow-teal: rgba(92, 201, 193, 0.1);
 
   /* Shadows — soft UI style */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03);
@@ -60,6 +80,49 @@
   /* Transitions */
   --ease-out: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --brand-primary: #60a5fa;
+  --brand-primary-light: #93c5fd;
+  --brand-primary-dark: #bfdbfe;
+  --brand-accent: #5eead4;
+  --brand-accent-dark: #99f6e4;
+  --surface-white: #111827;
+  --surface-subtle: #0f172a;
+  --surface-muted: #1e293b;
+  --surface-accent: #172554;
+  --surface-footer: #020617;
+  --page-background: #0b1120;
+  --status-ready: #4ade80;
+  --status-ready-bg: rgba(34, 197, 94, 0.12);
+  --status-processing: #93c5fd;
+  --status-processing-bg: rgba(59, 130, 246, 0.12);
+  --status-warning: #fbbf24;
+  --status-warning-bg: rgba(245, 158, 11, 0.12);
+  --status-error: #fca5a5;
+  --status-error-bg: rgba(239, 68, 68, 0.12);
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-on-dark: #f8fafc;
+  --text-on-dark-muted: #94a3b8;
+  --border-default: #334155;
+  --border-subtle: #1e293b;
+  --border-on-dark: rgba(255, 255, 255, 0.08);
+  --surface-glass: rgba(15, 23, 42, 0.92);
+  --surface-accent-strong: #1e3a8a;
+  --sidebar-background: #0f172a;
+  --hero-background: linear-gradient(180deg, #0b1120 0%, #0f172a 60%, #111827 100%);
+  --hero-grid-line: rgba(96, 165, 250, 0.07);
+  --hero-glow-blue: rgba(59, 130, 246, 0.18);
+  --hero-glow-teal: rgba(45, 212, 191, 0.12);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.5);
 }
 
 /* ═══════════════════════════════════════
@@ -83,6 +146,7 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -94,7 +158,31 @@ h1, h2, h3, h4, h5, h6 {
 a { text-decoration: none; color: inherit; }
 ul, ol { list-style: none; }
 button { cursor: pointer; font-family: inherit; border: none; outline: none; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+button:disabled { cursor: not-allowed; }
 img, svg { display: block; max-width: 100%; }
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.status-badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.status-badge--ready { color: var(--status-ready); background: var(--status-ready-bg); border-color: rgba(21, 128, 61, 0.16); }
+.status-badge--processing { color: var(--status-processing); background: var(--status-processing-bg); border-color: rgba(29, 78, 216, 0.14); }
+.status-badge--warning { color: var(--status-warning); background: var(--status-warning-bg); border-color: rgba(180, 83, 9, 0.16); }
+.status-badge--error { color: var(--status-error); background: var(--status-error-bg); border-color: rgba(185, 28, 28, 0.14); }
 
 /* ═══════════════════════════════════════
    Layout utilities
