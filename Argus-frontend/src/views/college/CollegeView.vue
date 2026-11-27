@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import http from '@/api/http'
+import http, { extractApiError } from '@/api/http'
 import { createAssistantSession, streamAssistantMessage } from '@/api/assistant'
 import { streamAskQuestion } from '@/api/qa'
 import { fetchGroups, type GroupItem } from '@/api/group'
@@ -76,6 +76,7 @@ const contribution = ref('')
 const evidence = ref('')
 const live = ref('')
 const draftInput = ref<HTMLTextAreaElement | null>(null)
+const materialInput = ref<HTMLInputElement | null>(null)
 
 let revision = 0
 let dirty = false
@@ -181,15 +182,40 @@ onUnmounted(() => {
 })
 
 async function upload(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
   if (!file) return
-  if (file.size > 96000) {
-    warning.value = '请选择小于 96 KB 的文本，较大讲义可上传到知识库。'
+  if (!/\.(txt|md)$/i.test(file.name)) {
+    warning.value = '当前材料仅支持 TXT 或 MD 文件。'
+    input.value = ''
     return
   }
-  const target = page.value
-  target.source = await file.text()
-  target.sourceName = file.name
+  if (file.size > 96000) {
+    warning.value = '内联材料最多 96 KB；较大讲义请使用下方“上传到知识库”。'
+    input.value = ''
+    return
+  }
+  try {
+    const text = await file.text()
+    if (text.length > 16000) {
+      warning.value = '内联材料最多 16000 字；较大讲义请使用下方“上传到知识库”。'
+      input.value = ''
+      return
+    }
+    page.value.source = text
+    page.value.sourceName = file.name
+    warning.value = ''
+  } catch {
+    warning.value = '文件读取失败，请重试或直接粘贴原文。'
+  } finally {
+    input.value = ''
+  }
+}
+
+function removeMaterial() {
+  page.value.source = ''
+  page.value.sourceName = ''
+  warning.value = ''
 }
 
 function fillExample(text: string) {
@@ -322,7 +348,10 @@ async function send() {
     currentPage.turns.push(turn)
     currentPage.draft = ''
   } catch (error) {
-    warning.value = error instanceof Error ? error.message : '请求失败，请重试'
+    const status = (error as { response?: { status: number } }).response?.status
+    warning.value = status === 500
+      ? '模型服务暂不可用，请稍后重试。'
+      : error instanceof Error ? error.message : extractApiError(error, '请求失败，请重试')
   } finally {
     busy.value = false
     live.value = ''
@@ -506,15 +535,33 @@ function snapshot() {
                   <small>{{ page.group ? '正在使用所选课程小组内已入库的文档。' : '正在使用你粘贴的短材料，引用会核对原句。' }}</small>
                 </label>
 
-                <details class="material-input">
-                  <summary>
-                    <span>{{ page.sourceName || '附上材料或粘贴原文' }}</span>
-                    <small>TXT / MD，最大 96 KB</small>
-                  </summary>
-                  <input type="file" accept=".txt,.md" @change="upload">
-                  <textarea v-model="page.source" aria-label="材料原文" placeholder="可核对的讲义、通知、采访记录或岗位要求"></textarea>
-                  <RouterLink to="/app/documents">较大讲义请到文档管理入库 →</RouterLink>
-                </details>
+                <section class="material-input" aria-labelledby="material-title">
+                  <div class="material-input__header">
+                    <div>
+                      <strong id="material-title">材料原文</strong>
+                      <small>上传短材料，或直接粘贴需要核对的内容</small>
+                    </div>
+                    <button v-if="page.sourceName" type="button" class="material-input__remove" @click="removeMaterial">移除</button>
+                  </div>
+                  <div class="material-input__actions">
+                    <button type="button" class="material-upload-button" @click="materialInput?.click()">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                      {{ page.sourceName ? '更换 TXT / MD' : '上传 TXT / MD' }}
+                    </button>
+                    <input ref="materialInput" class="material-input__file" type="file" accept=".txt,.md" @change="upload">
+                    <span v-if="page.sourceName" class="material-input__filename">{{ page.sourceName }}</span>
+                    <small v-else>短材料随本次问题一起发送</small>
+                  </div>
+                  <textarea v-model="page.source" aria-label="材料原文" placeholder="也可以直接粘贴讲义、通知、采访记录或岗位要求"></textarea>
+                  <div class="material-input__footer">
+                    <small>内联短材料用于逐句核对；大讲义请上传知识库</small>
+                    <RouterLink to="/app/documents">上传到知识库 →</RouterLink>
+                  </div>
+                </section>
 
                 <label class="field">
                   <span>说说你想做什么</span>
@@ -812,12 +859,21 @@ function snapshot() {
 .composer-card { padding: 22px; }
 .composer-card form { display: grid; gap: 16px; }
 .field small { color: var(--text-muted); font-size: 0.74rem; font-weight: 400; }
-.material-input { padding: 12px 14px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--surface-subtle); }
-.material-input summary { display: flex; justify-content: space-between; gap: 12px; cursor: pointer; color: var(--text-secondary); font-size: 0.8rem; list-style: none; }
-.material-input summary small { color: var(--text-muted); font-size: 0.72rem; }
-.material-input[open] summary { margin-bottom: 12px; }
-.material-input input[type=file] { padding: 7px; font-size: 0.76rem; }
-.material-input a { display: inline-block; color: var(--brand-primary); font-size: 0.76rem; }
+.material-input { display: grid; gap: 12px; padding: 15px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--surface-subtle); }
+.material-input__header, .material-input__actions, .material-input__footer { display: flex; align-items: center; gap: 12px; }
+.material-input__header { justify-content: space-between; }
+.material-input__header > div { display: grid; gap: 3px; }
+.material-input__header strong { color: var(--text-primary); font-size: 0.84rem; }
+.material-input__header small, .material-input__actions small, .material-input__footer small { color: var(--text-muted); font-size: 0.72rem; font-weight: 400; }
+.material-input__remove { flex-shrink: 0; padding: 4px 7px; border-radius: 6px; color: var(--text-muted); font-size: 0.72rem; }
+.material-input__remove:hover { background: var(--surface-white); color: var(--status-warning); }
+.material-upload-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 8px 13px; border: 1px solid rgba(74,144,217,.32); border-radius: var(--radius-sm); background: var(--surface-white); color: var(--brand-primary-dark); font-size: 0.8rem; font-weight: 700; box-shadow: var(--shadow-xs); transition: all 0.18s ease; }
+.material-upload-button:hover { border-color: var(--brand-primary); background: var(--surface-accent); transform: translateY(-1px); }
+.material-input__file { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.material-input__filename { min-width: 0; overflow: hidden; color: var(--text-secondary); font-size: 0.76rem; text-overflow: ellipsis; white-space: nowrap; }
+.material-input textarea { min-height: 82px; background: var(--surface-white); }
+.material-input__footer { justify-content: space-between; gap: 10px; }
+.material-input__footer a { flex-shrink: 0; color: var(--brand-primary); font-size: 0.76rem; font-weight: 700; }
 .composer-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .composer-actions small { color: var(--text-muted); font-size: 0.72rem; }
 .streaming-status { display: flex; align-items: center; gap: 9px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-accent); color: var(--brand-primary-dark); font-size: 0.82rem; }
@@ -907,7 +963,9 @@ function snapshot() {
 @media (max-width: 520px) {
   .profile-grid, .task-grid { grid-template-columns: minmax(0, 1fr); }
   .composer-card, .profile-card { padding: 16px; }
-  .material-input summary { flex-direction: column; gap: 4px; }
+  .material-input { padding: 12px; }
+  .material-input__actions, .material-input__footer { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .material-upload-button { width: 100%; }
   .citation-details, .turn > .btn-secondary { margin-left: 0; }
   .turn__question, .turn__answer { grid-template-columns: 38px minmax(0, 1fr); gap: 9px; }
   .turn__question > span, .turn__answer > span { width: 36px; }
