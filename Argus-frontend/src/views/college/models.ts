@@ -27,9 +27,41 @@ export function valueAt(model:Model,ratio:number){
 }
 export function extent(m:Model){return m.kind==='rc'?5*m.values[0]!*m.values[1]!/1000:m.values[0]!}
 
+function parseRc(question: string, previous?: Model): Model | undefined {
+  const resistance = question.match(/电阻\s*(?:改为|改成|设为|设置为)?\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(k?Ω|千欧|欧姆)/i)
+  const capacitance = question.match(/电容\s*(?:改为|改成|设为|设置为)?\s*[:=]?\s*(\d+(?:\.\d+)?)\s*([μmunp]?F|毫法|微法|纳法|皮法)/i)
+  const voltage = question.match(/电源\s*(?:改为|改成|设为|设置为)?\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(mV|V|千伏)/i)
+  if (!resistance && !capacitance && !voltage) return undefined
+  if (!previous && (!resistance || !capacitance || !voltage)) return undefined
+
+  const values = previous?.kind === 'rc' ? [...previous.values] : [0, 0, 0]
+  if (resistance) {
+    const unit = resistance[2]!.toLowerCase()
+    values[0] = Number(resistance[1]) / (unit === 'ω' || unit === '欧姆' ? 1000 : 1)
+  }
+  if (capacitance) {
+    const unit = capacitance[2]!.toLowerCase()
+    const scale = unit === 'f' ? 1e6 : unit === 'mf' || unit === '毫法' ? 1000 : unit === 'nf' || unit === '纳法' ? 0.001 : unit === 'pf' || unit === '皮法' ? 1e-6 : 1
+    values[1] = Number(capacitance[1]) * scale
+  }
+  if (voltage) {
+    const unit = voltage[2]!.toLowerCase()
+    values[2] = Number(voltage[1]) * (unit === 'mv' ? 0.001 : unit === '千伏' ? 1000 : 1)
+  }
+  return { kind: 'rc', values }
+}
+
 // Resolve unambiguous parameter edits without spending a model call.
 export function localExperiment(question:string, previous?:Model):{answer:string;model?:Model}|undefined {
   const q=question.trim()
+  const parsedRc=parseRc(q,previous)
+  if(parsedRc){
+    if(!validModel(parsedRc))return {answer:'RC 参数超出可计算范围，请核对单位。'}
+    const [resistance,capacitance,voltage]=parsedRc.values
+    const format=(value:number)=>Number(value.toPrecision(4))
+    const tau=format(resistance!*capacitance!/1000)
+    return {model:parsedRc,answer:`已按 R=${format(resistance!)} kΩ、C=${format(capacitance!)} μF、U=${format(voltage!)} V 生成 RC 充电曲线，时间常数 τ=${tau} s。`}
+  }
   if(previous?.kind==='rc' && /^(?:把|将)?电阻(?:改为原来的两倍|翻倍|加倍)[。！!？?]?$/.test(q)){
     const model:Model={kind:'rc',values:[...previous.values]}
     model.values[0]=model.values[0]!*2
