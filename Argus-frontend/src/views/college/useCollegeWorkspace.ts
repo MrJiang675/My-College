@@ -69,6 +69,7 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
     experience: '我的经历',
   }
 
+  // Live practice now owns /practice and /practice/lab; retain old stored model/snapshots for backup compatibility.
   const route = useRoute()
   const auth = useAuthStore()
   const mod = computed(() => props.moduleOverride || String(route.params.module || 'home'))

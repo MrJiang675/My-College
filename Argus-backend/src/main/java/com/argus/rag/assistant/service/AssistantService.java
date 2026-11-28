@@ -56,7 +56,8 @@ public class AssistantService {
     }
 
     private static final Logger log = LoggerFactory.getLogger(AssistantService.class);
-    private static final String MODEL_NAME = "glm-4-flash";
+    @org.springframework.beans.factory.annotation.Value("${argus.deepseek.model:deepseek-flash}")
+    private String configuredModel = "deepseek-flash";
     private static final int TOKEN_ESTIMATE_DIVISOR = 4;
 
     public AssistantService(
@@ -410,7 +411,7 @@ public class AssistantService {
             int completionTokens = estimateTokens(reply);
             int totalTokens = promptTokens + completionTokens;
 
-            BigDecimal costAmount = llmCostCalculator.calculate(MODEL_NAME, promptTokens, completionTokens);
+            BigDecimal costAmount = llmCostCalculator.calculate(configuredModel, promptTokens, completionTokens);
 
             LlmUsageRecordDTO record = LlmUsageRecordDTO.builder()
                     .userId(userId)
@@ -426,7 +427,7 @@ public class AssistantService {
                     .latencyMs(latencyMs)
                     .success(success)
                     .errorMessage(errorMessage)
-                    .modelName(MODEL_NAME)
+                    .modelName(configuredModel)
                     .build();
 
             llmUsageCollector.record(record);

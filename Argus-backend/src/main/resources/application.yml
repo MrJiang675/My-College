@@ -1,4 +1,32 @@
 spring:
+  ai:
+    model:
+      chat: openai
+      embedding: zhipuai
+    openai:
+      api-key: ${DEEPSEEK_API_KEY:test-key}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      embedding:
+        enabled: false
+      chat:
+        enabled: true
+        completions-path: /chat/completions
+        options:
+          model: ${DEEPSEEK_CHAT_MODEL:deepseek-flash}
+          temperature: 0.3
+          extra-body:
+            thinking:
+              type: disabled
+    zhipuai:
+      chat:
+        enabled: false
+      embedding:
+        enabled: true
+    dashscope:
+      chat:
+        enabled: false
+      embedding:
+        enabled: false
   profiles:
     active: dev
   servlet:
@@ -35,6 +63,18 @@ mybatis-plus:
 
 
 argus:
+  # 对话/视觉/仿真共用 DeepSeek；智谱只保留 1024 维 embedding，不迁移已有向量。
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY:}
+    base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+    model: ${DEEPSEEK_CHAT_MODEL:deepseek-flash}
+    vision-model: ${DEEPSEEK_VISION_MODEL:deepseek-flash}
+    simulation-model: ${DEEPSEEK_SIMULATION_MODEL:deepseek-flash}
+    simulation-thinking-level: ${DEEPSEEK_SIMULATION_THINKING_LEVEL:low}
+    connect-timeout-seconds: ${DEEPSEEK_CONNECT_TIMEOUT_SECONDS:10}
+    read-timeout-seconds: ${DEEPSEEK_READ_TIMEOUT_SECONDS:90}
+    simulation-max-tokens: ${DEEPSEEK_SIMULATION_MAX_TOKENS:8192}
+    simulation-max-concurrent: ${DEEPSEEK_SIMULATION_MAX_CONCURRENT:3}
   rag:
     cors:
       # 开发仅放行本地前端；生产必须通过环境变量指定准确的 Sites Origin。
@@ -45,6 +85,6 @@ argus.upload.max-size-mb: ${ARGUS_MAX_UPLOAD_SIZE_MB:50}
 argus.retrieval.elasticsearch-enabled: ${ARGUS_ELASTICSEARCH_ENABLED:true}
 
 # 云端识图；不运行本地 OCR，图片不写入工作台 JSON。
-argus.vision.model: ${ARGUS_VISION_MODEL:glm-4.6v-flash}
+argus.vision.model: ${DEEPSEEK_VISION_MODEL:deepseek-flash}
 argus.vision.max-image-mb: ${ARGUS_VISION_MAX_IMAGE_MB:5}
 argus.vision.timeout-seconds: ${ARGUS_VISION_TIMEOUT_SECONDS:30}

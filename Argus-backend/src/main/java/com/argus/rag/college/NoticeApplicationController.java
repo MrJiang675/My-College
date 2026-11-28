@@ -19,7 +19,7 @@ public class NoticeApplicationController {
  private final Semaphore capacity=new Semaphore(1);
  public record Request(@jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max=16000) String source,
    @jakarta.validation.constraints.NotEmpty @jakarta.validation.constraints.Size(max=12) List<String> selectedExperienceIds,@jakarta.validation.Valid CampusProfile campusProfile){}
- public NoticeApplicationController(CurrentUserService users,WorkspaceMapper workspace,ObjectMapper json,@Qualifier("zhiPuAiChatModel") ChatModel model){this.users=users;this.workspace=workspace;this.json=json;this.model=model;}
+ public NoticeApplicationController(CurrentUserService users,WorkspaceMapper workspace,ObjectMapper json,@Qualifier("primaryChatModel") ChatModel model){this.users=users;this.workspace=workspace;this.json=json;this.model=model;}
  @PostMapping public ApiResponse<Map<String,String>> generate(@jakarta.validation.Valid @RequestBody Request request){
   long owner=users.getRequiredCurrentUser().userId();
   var row=workspace.load(owner);if(row==null)throw new BusinessException("请先在我的项目中收录本人经历。");

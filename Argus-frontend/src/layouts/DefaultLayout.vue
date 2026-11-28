@@ -41,6 +41,7 @@ onUnmounted(() => window.removeEventListener('argus:workspace-progress', updateP
 const userName = computed(() => authStore.currentUser?.displayName ?? '同学')
 
 const currentTitle = computed(() => {
+  if (route.path.startsWith('/app/college/practice')) return '专业实践'
   if (route.path === '/app/college/mock-interview') return '模拟面试'
   if (route.path === '/app/groups')
     return route.query.tab === 'experience'
@@ -111,6 +112,7 @@ onUnmounted(() => {
 // ── 当前激活菜单 ──
 const activeMenu = computed(() => {
   const path = route.path
+  if (path.startsWith('/app/college/practice')) return 'college-practice'
   if (path === '/app/college/mock-interview') return 'college-career'
   if (path.startsWith('/app/college/')) return 'college-' + String(route.params.module)
   if (path === '/app/college') return 'college'

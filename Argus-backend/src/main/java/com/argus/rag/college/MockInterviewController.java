@@ -33,7 +33,7 @@ public class MockInterviewController {
         @jakarta.validation.constraints.Size(max=12) List<@jakarta.validation.Valid Experience> selectedExperiences) {
         public Request(String resumeText,String targetRole,String interviewType,CampusProfile campusProfile,List<Answer> answers){this(resumeText,targetRole,interviewType,campusProfile,answers,null);}
     }
-    public MockInterviewController(CurrentUserService users,@Qualifier("zhiPuAiChatModel") ChatModel model,ObjectMapper json) throws java.io.IOException {
+    public MockInterviewController(CurrentUserService users,@Qualifier("primaryChatModel") ChatModel model,ObjectMapper json) throws java.io.IOException {
         this.users=users;this.model=model;this.json=json;
         try(var stream=new ClassPathResource("prompts/skills/mock_interview.st").getInputStream()) {
             instructions=new String(stream.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
@@ -56,9 +56,9 @@ public class MockInterviewController {
         if(!capacity.tryAcquire()) throw new BusinessException("模拟面试正在生成，请稍后重试。");
         try {
             String command=evaluation?"评估这份答卷；未作答必须记为未作答，分数为 0。":"仅生成五道题，不评分。";
-            var options=org.springframework.ai.zhipuai.ZhiPuAiChatOptions.builder()
+            var options=org.springframework.ai.openai.OpenAiChatOptions.builder().extraBody(java.util.Map.of("thinking",java.util.Map.of("type","disabled")))
                 .maxTokens(4096).temperature(0.2)
-                .responseFormat(org.springframework.ai.zhipuai.api.ZhiPuAiApi.ChatCompletionRequest.ResponseFormat.jsonObject()).build();
+                .responseFormat(new org.springframework.ai.openai.api.ResponseFormat(org.springframework.ai.openai.api.ResponseFormat.Type.JSON_OBJECT,null)).build();
             var prompt=new Prompt(List.of(new SystemMessage(instructions+"\n本次唯一输出结构：\n"+schema(evaluation)),new UserMessage(command+"\n"+input)),options);
             var text=Mono.fromCallable(()->{try{
                 String firstReply=model.call(prompt).getResult().getOutput().getText();

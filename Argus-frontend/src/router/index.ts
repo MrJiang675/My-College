@@ -30,6 +30,8 @@ const router = createRouter({
       component: () => import('../layouts/DefaultLayout.vue'),
       redirect: '/app/college',
       children: [
+        {path:'college/practice',component:()=>import('../views/college/components/PracticeSetupPage.vue'),meta:{title:'专业实践 · 提问与材料'}},
+        {path:'college/practice/lab',component:()=>import('../views/college/components/PracticeLabPage.vue'),meta:{title:'专业实践 · 模拟实验台'}},
         { path: 'college/campus', redirect: '/app/college/opps?view=affairs' },
         { path: 'college/project', redirect: '/app/groups?tab=projects' },
         { path: 'college/experience', redirect: '/app/groups?tab=experience' },

@@ -22,13 +22,13 @@ spring:
     driver-class-name: org.postgresql.Driver
   ai:
     model:
-      chat: zhipuai
+      chat: openai
       embedding: zhipuai
     zhipuai:
       api-key: ${ZHIPUAI_API_KEY}
+      # 仅保留 embedding-2，禁止初始化智谱聊天。
       chat:
-        options:
-          model: glm-4-flash
+        enabled: false
       embedding:
         options:
           dimensions: 1024
@@ -88,7 +88,9 @@ youcom:
 
 argus.retrieval.elasticsearch-enabled: ${ARGUS_ELASTICSEARCH_ENABLED:false}
 
-# 视觉提取使用现有 ZHIPUAI_API_KEY，按部署环境选择云端模型。
-argus.vision.model: ${ARGUS_VISION_MODEL:glm-4.6v-flash}
+# 视觉提取使用 DeepSeek；ZHIPUAI_API_KEY 仅供 embedding-2。
+argus.vision.model: ${DEEPSEEK_VISION_MODEL:deepseek-flash}
 argus.vision.max-image-mb: ${ARGUS_VISION_MAX_IMAGE_MB:5}
 argus.vision.timeout-seconds: ${ARGUS_VISION_TIMEOUT_SECONDS:30}
+
+# DeepSeek 连接/模型/限额统一继承 application.yml 的 argus.deepseek，环境变量可覆盖。

@@ -28,7 +28,7 @@ public class AssistantReactAgentFactory {
     private final AssistantKnowledgeBaseTool assistantKnowledgeBaseTool;
 
     public AssistantReactAgentFactory(
-            @Qualifier("zhiPuAiChatModel") ChatModel chatModel,
+            @Qualifier("primaryChatModel") ChatModel chatModel,
             AssistantShortTermMemoryHook assistantShortTermMemoryHook,
             AssistantKnowledgeBaseTool assistantKnowledgeBaseTool
     ) {

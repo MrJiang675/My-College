@@ -34,7 +34,8 @@ import java.util.concurrent.atomic.AtomicReference;
 public class QaService {
 
     private static final Logger log = LoggerFactory.getLogger(QaService.class);
-    private static final String MODEL_NAME = "glm-4-flash";
+    @org.springframework.beans.factory.annotation.Value("${argus.deepseek.model:deepseek-flash}")
+    private String configuredModel = "deepseek-flash";
     private static final String INSUFFICIENT_EVIDENCE_CODE = "INSUFFICIENT_EVIDENCE";
     private static final String SYSTEM_ERROR_CODE = "SYSTEM_ERROR";
 
@@ -118,7 +119,7 @@ public class QaService {
                 groupId,
                 question,
                 endpoint,
-                MODEL_NAME,
+                actualModel(usage),
                 response,
                 evidenceLevel,
                 usage,
@@ -209,10 +210,11 @@ public class QaService {
                 recordIdRef);
     }
 
+    private String actualModel(QaChatService.UsageInfo usage){return usage.modelName()!=null&&!usage.modelName().isBlank()?usage.modelName():configuredModel;}
     private void recordUsage(Long userId, Long groupId, String endpoint,
                              QaChatService.UsageInfo usage, boolean success, String errorMessage) {
         try {
-            BigDecimal cost = llmCostCalculator.calculate(MODEL_NAME, usage.promptTokens(), usage.completionTokens());
+            BigDecimal cost = llmCostCalculator.calculate(actualModel(usage), usage.promptTokens(), usage.completionTokens());
             LlmUsageRecordDTO dto = LlmUsageRecordDTO.builder()
                     .userId(userId)
                     .groupId(groupId)
@@ -226,7 +228,7 @@ public class QaService {
                     .latencyMs(usage.latencyMs())
                     .success(success)
                     .errorMessage(errorMessage)
-                    .modelName(MODEL_NAME)
+                    .modelName(actualModel(usage))
                     .build();
             llmUsageCollector.record(dto);
         } catch (Exception e) {

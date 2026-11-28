@@ -21,10 +21,10 @@ class CollegeFileExtractControllerTest {
  @Test void sendsConfiguredMultimodalRequestToMockServer()throws Exception {
   var server=com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1",0),0);
   var request=new java.util.concurrent.atomic.AtomicReference<String>();
-  server.createContext("/v4/chat/completions",exchange->{request.set(new String(exchange.getRequestBody().readAllBytes(),StandardCharsets.UTF_8));byte[] body="{\"choices\":[{\"message\":{\"content\":\"图中文字【字迹模糊需核实】\"}}]}".getBytes(StandardCharsets.UTF_8);exchange.getResponseHeaders().add("Content-Type","application/json");exchange.sendResponseHeaders(200,body.length);exchange.getResponseBody().write(body);exchange.close();});server.start();
+  server.createContext("/chat/completions",exchange->{request.set(new String(exchange.getRequestBody().readAllBytes(),StandardCharsets.UTF_8));byte[] body="{\"choices\":[{\"message\":{\"content\":\"图中文字【字迹模糊需核实】\"}}]}".getBytes(StandardCharsets.UTF_8);exchange.getResponseHeaders().add("Content-Type","application/json");exchange.sendResponseHeaders(200,body.length);exchange.getResponseBody().write(body);exchange.close();});server.start();
   try{
    var result=controller("http://127.0.0.1:"+server.getAddress().getPort()).extract(new MockMultipartFile("file","a.png","image/png",new byte[]{1,2,3})).data();
-   assertTrue(result.extractedText().contains("图中文字"));assertTrue(request.get().contains("configured-vision-model"));assertTrue(request.get().contains("image_url"));
+   assertTrue(result.extractedText().contains("图中文字"));assertTrue(request.get().contains("configured-vision-model"));assertTrue(request.get().contains("image_url"));assertTrue(request.get().contains("disabled"));
   }finally{server.stop(0);}
  }
  @Test void blankScannedPdfHasReadableError()throws Exception{

@@ -2,6 +2,7 @@
 const uploader=ref<InstanceType<typeof MaterialFileUploader>>()
 import {ref,computed} from 'vue'
 import MarkdownContent from '@/components/MarkdownContent.vue'
+import PracticeSetupPage from './components/PracticeSetupPage.vue'
 import {moduleInputConfig} from '@/constants/moduleInputConfig'
 function loadNoticeScenario(source:string,name:string){page.value.source=source;page.value.sourceName=name;page.value.sampleId=undefined;page.value.sampleOriginal=undefined}
 function switchNoticeProfile(college:string,grade:string){state.value.dept=college;state.value.grade=grade}
@@ -103,7 +104,8 @@ loadInterviewExample,
 </script>
 
 <template>
-  <main class="college" :class="{'is-notice-module':mod==='opps'}">
+  <PracticeSetupPage v-if="mod==='practice'" :preview="props.previewMode" />
+  <main v-else class="college" :class="{'is-notice-module':mod==='opps'}">
     <div v-if="warning || conflictHint || loadError" class="college-alert" role="alert">
       <span>{{ conflictHint || loadError || warning }}</span>
       <button v-if="loadError" type="button" @click="loadWorkspace">重试</button>

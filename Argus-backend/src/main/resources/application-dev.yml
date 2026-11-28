@@ -37,9 +37,9 @@ spring:
       # 真实 key 通过环境变量 ZHIPUAI_API_KEY 注入，不写入仓库
       api-key: ${ZHIPUAI_API_KEY:set-real-key-via-env}
 #      base-url: ${OPENAI_BASE_URL:https://open.bigmodel.cn/api/paas/v4/}
+      # 仅保留 embedding-2，禁止初始化智谱聊天。
       chat:
-        options:
-          model: glm-4-flash
+        enabled: false
       #openai:
       #api-key: ${OPENAI_API_KEY:your-openai-compatible-api-key}
       #base-url: ${OPENAI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
@@ -132,3 +132,7 @@ youcom:
     enabled: false
     api-key: ${YOUCOM_API_KEY:}
     top-k: 10
+
+# DeepSeek 生成；智谱专用 1024 维向量。其余配置继承 application.yml 的 argus.deepseek。
+spring.ai.model.chat: openai
+spring.ai.model.embedding: zhipuai
