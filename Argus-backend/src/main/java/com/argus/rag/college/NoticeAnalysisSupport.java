@@ -13,6 +13,7 @@ public final class NoticeAnalysisSupport {
         只返回一个 JSON 对象，保持 answer 和 quotes；并完整返回下列结构：
         {"answer":"基于原文的分析","quotes":["原句"],
         "eligibility":{"status":"YELLOW","summary":"结合学院与年级说明符合、不符合或缺什么","evidences":["原句"]},
+        "opportunity":{"level":"原文明示活动级别或需核实","audience":"面向对象","benefit":"原文明示收获或需核实","credit":"综测加分：缺本院认定目录则需核实","risks":["核心风险"]},
         "missingDocuments":["原文未附的院级文件或待核实事项"],
         "teacherInquiryScripts":["老师您好，关于……想请教……谢谢老师。"],
         "deadlines":[{"title":"事项","dateTime":"2026-12-10T17:00:00+08:00","location":"原文地点或空","description":"原文要求","needsVerify":true,"evidenceQuote":"含时间的原句"}],
@@ -27,7 +28,7 @@ public final class NoticeAnalysisSupport {
         if(!out.path("answer").isTextual())out.put("answer","【需核实】通知结构解析不完整，请核对原文后重试。");
         var eligibility=json.createObjectNode();
         var evidence=eligibility.putArray("evidences");
-        for(var q:out.path("eligibility").path("evidences"))if(q.isTextual()&&!q.asText().isBlank()&&source.contains(q.asText()))evidence.add(q.asText());
+        for(var q:out.path("eligibility").path("evidences"))if(q.isTextual()&&!q.asText().isBlank()&&matchesEvidence(source,q.asText()))evidence.add(originalEvidence(source,q.asText()));
         String status=out.path("eligibility").path("status").asText("YELLOW");
         boolean hasProfile=profile!=null&&profile.college()!=null&&!profile.college().isBlank()&&profile.grade()!=null&&!profile.grade().isBlank();
         if(!Set.of("GREEN","YELLOW","RED").contains(status)||evidence.isEmpty()||!hasProfile||Boolean.FALSE.equals(adaptation))status="YELLOW";
@@ -37,6 +38,7 @@ public final class NoticeAnalysisSupport {
         if(hasProfile&&!Boolean.FALSE.equals(adaptation)&&!evidence.isEmpty()) {
             String mismatch=explicitMismatch(evidence,profile);
             if(mismatch!=null){status="RED";summary=profile.college()+" · "+profile.grade()+"："+mismatch;}
+            else if(evidence.toString().contains("学院")&&!evidence.toString().contains(profile.college())&&!evidence.toString().contains("各学院")&&!evidence.toString().contains("不限学院")){status="YELLOW";summary="学院名称可能存在简称或范围差异，请向老师核实，不按简称直接判定不符合。";}
         }
         eligibility.put("status",status).put("summary",summary);out.set("eligibility",eligibility);
         var missing=json.createArrayNode();
@@ -60,16 +62,21 @@ public final class NoticeAnalysisSupport {
         var checklist=json.createArrayNode();
         for(var c:out.path("checklist"))if(c.isObject()&&checklist.size()<20) {
             String quote=c.path("evidenceQuote").asText("");
-            if(!quote.isBlank()&&source.contains(quote)&&c.path("item").isTextual())checklist.add(c);
+            if(!quote.isBlank()&&matchesEvidence(source,quote)&&c.path("item").isTextual()){var copy=((ObjectNode)c).deepCopy();copy.put("evidenceQuote",originalEvidence(source,quote));checklist.add(copy);}
         }
-        out.set("checklist",checklist);return out;
+        out.set("checklist",checklist);
+        var attachments=out.putArray("attachmentWarnings");
+        for(String paragraph:source.split("\\n"))if(paragraph.matches(".*(?:见附件|详见附件|附件[0-9一二三四]|另附表格).*"))attachments.add(paragraph);
+        return out;
     }
+    static String normalized(String text){return java.text.Normalizer.normalize(text,java.text.Normalizer.Form.NFKC).replaceAll("[\\s\\p{Z}]+","").replace('，',',').replace('。','.').replace('；',';').replace('：',':');}
+    static boolean matchesEvidence(String source,String quote){return !quote.isBlank()&&normalized(source).contains(normalized(quote));}
+    static String originalEvidence(String source,String quote){if(source.contains(quote))return quote;for(String paragraph:source.split("\\n\\s*\\n"))if(matchesEvidence(paragraph,quote))return paragraph;return source;}
     private String explicitMismatch(ArrayNode evidence,CampusProfile profile) {
         for(var q:evidence) {
             String quote=q.asText();
             if(!quote.matches("(?s).*(仅限|仅面向|申请对象为|报送对象为).*"))continue;
-            if(quote.contains("学院")&&!quote.contains("不限学院")&&!quote.contains("各学院")&&!quote.contains(profile.college()))
-                return "原文明确限定了其他学院，请先核实是否有补充开放范围。";
+
             var grades=Pattern.compile("大([一二三四])").matcher(quote);var allowed=new TreeSet<Integer>();
             while(grades.find())allowed.add("一二三四".indexOf(grades.group(1))+1);
             int own=List.of("大一","大二","大三","大四").indexOf(profile.grade())+1;
@@ -83,7 +90,7 @@ public final class NoticeAnalysisSupport {
     }
 
     private boolean hasDateEvidence(String source,String date,String quote) {
-        if(quote.isBlank()||!source.contains(quote)||!date.matches("\\d{4}-\\d{2}-\\d{2}(?:T.*)?"))return false;
+        if(quote.isBlank()||!matchesEvidence(source,quote)||!date.matches("\\d{4}-\\d{2}-\\d{2}(?:T.*)?"))return false;
         try {
             var day=java.time.LocalDate.parse(date.substring(0,10));
             String pattern=day.getYear()+"(?:年|[-/])0?"+day.getMonthValue()+"(?:月|[-/])0?"+day.getDayOfMonth()+"(?:日|\\b)";

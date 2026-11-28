@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import http, { extractApiError } from '@/api/http'
 import { useRoute } from 'vue-router'
 const route = useRoute()
+import MarkdownContent from '@/components/MarkdownContent.vue'
 import MaterialFileUploader from '@/components/MaterialFileUploader.vue'
 type Question = {
   id: string
@@ -244,7 +245,7 @@ function exportReport() {
       <h2>{{ current.question }}</h2>
       <details>
         <summary>面试官追问意图（命中简历哪处薄弱点）</summary>
-        <p>{{ current.targetWeakness || '请核对个人行动、结果与证明是否说清。' }}</p>
+        <MarkdownContent :content="current.targetWeakness || '请核对个人行动、结果与证明是否说清。'" />
       </details>
       <label
         >我的回答<textarea
@@ -279,19 +280,14 @@ function exportReport() {
         <h3>{{ i + 1 }}. {{ q.question }}</h3>
         <p>你的回答：{{ answers[i] || '未作答' }}</p>
         <p>评分：{{ report.questionFeedbacks[i]?.score }} / 100</p>
-        <p>亮点：{{ report.questionFeedbacks[i]?.strengths }}</p>
-        <p>改进点：{{ report.questionFeedbacks[i]?.weaknesses }}</p>
-        <p>示范优化回答：{{ report.questionFeedbacks[i]?.improvedAnswerSample }}</p>
-        <p>
-          潜在二轮追问：{{
-            report.questionFeedbacks[i]?.followUpHint ||
-            '如果请你出示个人贡献的原始证据，你会提供什么？'
-          }}
-        </p>
+        <strong>亮点</strong><MarkdownContent :content="report.questionFeedbacks[i]?.strengths" />
+        <strong>改进点</strong><MarkdownContent :content="report.questionFeedbacks[i]?.weaknesses" />
+        <strong>示范优化回答</strong><MarkdownContent :content="report.questionFeedbacks[i]?.improvedAnswerSample" />
+        <strong>潜在二轮追问</strong><MarkdownContent :content="report.questionFeedbacks[i]?.followUpHint || '如果请你出示个人贡献的原始证据，你会提供什么？'" />
       </article>
       <h3>接下来可以做</h3>
       <ul>
-        <li v-for="advice in report.actionableAdvice" :key="advice">{{ advice }}</li>
+        <li v-for="advice in report.actionableAdvice" :key="advice"><MarkdownContent :content="advice" /></li>
       </ul>
       <div class="question-nav">
         <button class="primary" @click="exportReport">导出复盘 Markdown</button

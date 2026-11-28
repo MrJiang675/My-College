@@ -63,3 +63,56 @@ client_max_body_size 110m;
 ```
 
 SSE 可以在同一个 HTTP 响应内逐个发送事件。关闭代理缓冲可及时传递已由应用 flush 的数据。上传限制作用于请求方向；超限会在抵达 Spring 前收到 413，提高 Nginx 上限仍需遵守后端单文件和总请求大小限制。
+
+
+## 2026-11-28：工作台材料包和动态绘图
+
+### 安全 Markdown：解析与净化是两件事
+
+以前直接插值会显示 Markdown 符号；直接 v-html AI 文本又会引入 XSS。现在统一组件先转义原始 HTML，marked 仅生成 Markdown 结构，再用标签/协议白名单清理。链接只允许 http/https/mailto，删掉事件属性；不加载 AI 回复中的远程图片。
+
+```vue
+<!-- 修改前 -->
+<p>{{ turn.a }}</p>
+<!-- 修改后：净化逻辑集中于 safeMarkdown.ts -->
+<MarkdownContent :content="turn.a" />
+```
+
+### 递归下降与判别联合类型
+
+`kind` 区分内置 `values` 与公式的 `expression/params`，必须先判断 kind，才能读对应字段。表达式语法分 add → mul → unary → power → primary，幂右结合；一元负号低于幂，所以 `-2^2=-4`。函数表既限制名称也限制参数个数。不能用 eval/new Function 执行 AI 输出；语法正确仍可能有奇点，故再做区间采样和有限值检查。
+
+```ts
+// 修改前：只接受三个内置数组模型
+// type Model = { kind:'rc'|'beam'|'normal'; values:number[] }
+// 修改后：内置与通用公式分别建模
+// type Model = {kind:BuiltinKind;values:number[]} | FormulaModel
+const fn = compileFormula('A * exp(-k * x) * cos(w * x)', ['x','A','k','w'])
+const y = fn({ x:1, A:1, k:0.2, w:3 })
+```
+
+采样通过不等于物理正确：单位、边界条件、忽略空气阻力等假设仍须告知。峰谷 HUD 是采样峰谷，不冒充严格解析极值。
+
+### SSRF 与 DNS 重绑定
+
+新增抓取接口比普通 URL 格式检查要求更高。必须检查 DNS 所有地址，拒绝私网/回环/链路本地/保留地址；实际 socket 也必须使用检查过的 IP，不能检查一次后让 HTTP 库再解析不同地址。HTTPS 固定 IP 连接仍按原域名验证证书与 SNI；重定向每跳重新验证。并发、超时和响应体上限共同保护低配服务器。本机 198.18.* 虚拟映射被拒绝是正确结果，不能为演示取消过滤。
+
+### 浏览器 File、Vue 响应式与持久化边界
+
+`shallowReactive(new Map<string,File>())` 保持本地文件对象，不放进工作台 state。state 只存材料要求、显示名、确认元数据；File ID 是临时关联，刷新后文件不在 Map 就必须显示缺失，不能根据旧勾选声称备齐。
+
+```ts
+// 错误思路：提交材料送给 extract-text 或转 Base64 保存到工作台
+// 正确边界：分析来源可上传，真正的提交文件仅放本地 Map
+files.set(localId, file)
+const issues = blockers(requirement, files)
+// 没文件/扩展名不符/未人工确认 => 禁止 ZIP
+```
+
+### ZIP/OOXML 与“改扩展名”误区
+
+ZIP STORE 包含本地头、CRC-32、中央目录和结束记录；UTF-8 文件名需置通用标志位 11。XLSX 是包含 `[Content_Types].xml`、`_rels/.rels`、workbook、worksheet 等的 ZIP；内部关系路径不能被扁平化或把 `.rels` 的前导点删除。CSV 改名为 PDF 不会改变内容结构，修复应重新导出正确格式或替换为真结构文件。
+
+### 渐进式状态机与异步保存
+
+不要用“目标非空”直接推导当前步骤，否则快捷填入目标会在用户确认前跳页。步骤应独立保存，确认事件才推进；旧状态只在初次加载时推断一次。每个申请方向单独保存，明确通用建议不等于完成证据对标。跳面试前等待防抖保存完成，否则新页面从后端读取的可能还是旧目标/旧经历。

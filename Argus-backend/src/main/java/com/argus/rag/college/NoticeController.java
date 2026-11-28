@@ -25,6 +25,13 @@ public class NoticeController {
     public record Notice(String id, String title, String url) {}
     public NoticeController(CurrentUserService users) { this.users = users; }
 
+    @org.springframework.beans.factory.annotation.Autowired private PublicNoticeFetcher publicFetcher;
+    public record FetchUrl(@jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max=2048) String url) {}
+    @PostMapping("/fetch-url")
+    public ApiResponse<PublicNoticeFetcher.Page> fetchUrl(@jakarta.validation.Valid @RequestBody FetchUrl input) {
+        users.getRequiredCurrentUser();return ApiResponse.success(publicFetcher.fetch(input.url()));
+    }
+
     private String fetch(URI url) throws Exception {
         var req = HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(8)).GET().build();
         var res = client.send(req,HttpResponse.BodyHandlers.ofString());

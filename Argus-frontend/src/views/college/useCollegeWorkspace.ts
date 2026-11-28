@@ -48,8 +48,11 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
     selected?: string[]
     learningMode?: string
     publishedAt?: string
+    noticeMaterials?: import('@/utils/noticeMaterials').MaterialRequirement[]
     noticeAnalysis?: NoticeAnalysis & {contextKey?:string}
     projectStatus?:'ONGOING'|'DONE'
+    careerStep?:number
+    genericAdvice?:boolean
     targetRole?:string
     applicationDraft?: string
     requirementStatuses?: Record<string, string>
@@ -177,6 +180,12 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
     }
   }
 
+  async function saveBeforeInterview(){
+    const deadline=Date.now()+10000
+    while(saving&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,50))
+    await flush()
+    if(dirty||conflict||saving)throw Error('申请记录尚未同步，请保存成功后再进入面试')
+  }
   watch(
     state,
     () => {
@@ -496,6 +505,8 @@ function removeMaterial() {
           if (validModel(action.model)) {
             currentPage.previous = currentPage.model
             currentPage.model = action.model
+            await nextTick()
+            document.getElementById('experiment-workspace')?.scrollIntoView({behavior:'smooth',block:'start'})
             currentPage.checks = []
           } else if (action.model) {
             throw Error('参数未通过校验，请核实单位。')
@@ -583,6 +594,8 @@ function removeMaterial() {
           档案: [state.value.school, state.value.dept, state.value.major, state.value.grade],
           当前实验: currentPage.model,
           方向: module === 'career' ? state.value.track : undefined,
+          目标: module === 'career' ? currentPage.targetRole : undefined,
+          仅通用建议: module === 'career' ? currentPage.genericAdvice : undefined,
           经历: ['career', 'experience', 'project'].includes(module)
             ? (module === 'career'
                 ? state.value.entries.filter((entry) => currentPage.selected?.includes(entry.id))
@@ -779,6 +792,7 @@ loadInterviewExample,
     assistantQuestion,
     loadNotices,
     useNotice,
+    saveBeforeInterview,
     snapshot,
   }
 }

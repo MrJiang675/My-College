@@ -82,3 +82,10 @@
 - 涉及文件：TaskController、NoticeAnalysisSupport、NoticeApplicationController、GroupCollaborationController/Mapper、MockInterviewController 与对应 Skill/测试；NoticeActionDashboard、noticeScenarios、icsExport、CollaborationOverview、小组容器/创建对话框、MockInterviewView、工作台协调与首页/引导文案。完整清单见 strategy-alignment-report-2026-11-28.md。
 - 改动内容摘要：证据约束红绿灯、问老师话术、纯浏览器 .ics；成员范围小组统计、场景与邀请文案、AI 分拆团队/本人贡献；携带经历与目标的面试薄弱点和二轮追问。
 - 对接注意事项：无 DDL、无新密钥配置，建议先发兼容后端再发前端；小组 description 增加场景前缀，旧纯文本照常显示。实验模型、实验台与实践 Skill 零改动，RAG 检索/低内存配置不变。示例协作数据明确标记且不计真实统计；具体测试和外部模型限制以本次报告为准。
+
+
+## [2026-11-28] 材料包闭环、动态公式实验和渐进申请流程
+- 改动动机：把通知分析落到逐项材料核对和浏览器打包，升级多学科实践，降低申请页面信息负担，并统一安全 Markdown。
+- 涉及文件：MarkdownContent/safeMarkdown、moduleInputConfig、models/formulaEvaluator/ExperimentWorkspace、PracticeModelProtocol/TaskController/practice.st、PublicNoticeFetcher/NoticeController/NoticeAnalysisSupport、通知工作流和 zipPackager/demoMaterialGenerator/noticeMaterials、CareerWorkflow、工作台协调、类型/样例、面试/情境助教及本轮测试。逐文件清单与证据见 upgrade-seven-experience-report.md。
+- 改动内容摘要：七套本地实验和受限公式求值；认证且防 SSRF 的官网正文抓取；三视图通知工作流、缺附件/时间提醒、候选入单、本地多文件核对、真结构错格式示例、红条阻塞与 ZIP、确认日期后 ICS；三步申请与保存后带目标/经历进面试。
+- 对接注意事项：无 DDL/依赖升级/新环境变量，建议后端先上线。学生提交材料仅浏览器内存，刷新需重选，JSON 导入需重新确认；内容和签字由本人核实。新模型协议与旧前端回退需配套。本机 DNS 为 198.18.* 虚拟测试网段，新接口正确拒绝，公开网页抓取成功待正常公网 DNS 部署环境复验；不放开地址规则绕过。后端 78 测试、前端构建、10 项 Node 测试和浏览器夹具流程通过，真实 AI damped/formula 实测通过。

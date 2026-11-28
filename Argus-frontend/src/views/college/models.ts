@@ -1,4 +1,28 @@
-export type Model = { kind: 'rc' | 'beam' | 'normal'; values: number[] }
+import { compileFormula } from '../../utils/formulaEvaluator.ts'
+export type BuiltinKind = 'rc' | 'beam' | 'normal' | 'damped' | 'projectile' | 'power' | 'binomial'
+export type FormulaParam = {
+  name: string
+  symbol: string
+  unit?: string
+  value: number
+  min: number
+  max: number
+  step: number
+}
+export type FormulaModel = {
+  kind: 'formula'
+  title: string
+  discipline?: string
+  summary?: string
+  expression: string
+  xVar: string
+  xLabel: string
+  yLabel: string
+  xMin: number
+  xMax: number
+  params: FormulaParam[]
+}
+export type Model = { kind: BuiltinKind; values: number[] } | FormulaModel
 export const fields = {
   normal: ['均值 μ', '标准差 σ', '样本量 n'],
   rc: ['电阻 / kΩ', '电容 / μF', '电源 / V'],
@@ -7,7 +31,7 @@ export const fields = {
 export const skill: Record<string, string> = {
   learn: '辅导概念或出一道可作答的题；批改须利用前一轮题目。严格区分资料原文与解释。',
   practice:
-    '识别学生要验证的现象。支持直流阶跃 RC 充电、矩形悬臂梁单集中力及新闻采访原句核实。其他实验只解释步骤和需测量量。只有模型明确、参数充分且无冲突时输出计算指令。未给关键参数时先追问，也可以征得同意后使用示例参数。更新只改变学生指定的量。RC values=[电阻kΩ,电容μF,电源V]；beam values=[梁长m,宽mm,高mm,力N,杨氏模量GPa,载荷位置占梁长比例]。单位换算。用 JSON 对象响应：{"answer":"解释或追问","model":null} 或 {"answer":"说明依据和假设","model":{"kind":"rc或beam","values":[...]}}。采访核实时输出 {"answer":"说明","checks":[{"quote":"材料中的原句","claim":"报道表述","verdict":"证据充分或待核实"}]}。不要生成程序。',
+    '支持 rc、beam、normal、damped、projectile、power、binomial 七种确定性模型和 formula 通用公式。明确请求模拟时，已识别模型的缺失次要参数用教材默认值并明确披露；未知关系不得编造。公式只用白名单数学函数。返回 answer 和 model 的 JSON，不生成程序。',
   opps: '根据提供的机会原文分别核对资格、截止日与综测认定。无本院本学年目录时标记综测待核实；每条结论引用对应原句。',
   campus: '从通知原文提取对象、材料、时间及办理地点，逐项附原句。缺失项写需核实。',
   project: '整理学生自己的项目贡献，区分个人和团队工作，保留成果位置，不补造指标。',
@@ -23,7 +47,7 @@ export interface ExperimentParameter {
   step: number
 }
 export interface ExperimentModelPlugin {
-  id: Model['kind']
+  id: BuiltinKind
   name: string
   discipline: string
   summary: string
@@ -31,6 +55,7 @@ export interface ExperimentModelPlugin {
   compute(params: number[]): {
     points: { x: number; y: number }[]
     comparisonPoints?: { x: number; y: number }[]
+    lowerEnvelope?: { x: number; y: number }[]
     metrics: Record<string, number>
   }
   samplePrompt: string
@@ -54,7 +79,7 @@ const parameter = (
 function points(values: number[], fn: (v: number[], r: number) => number, width: number) {
   return Array.from({ length: 101 }, (_, i) => ({ x: (width * i) / 100, y: fn(values, i / 100) }))
 }
-export const experimentPlugins: Record<Model['kind'], ExperimentModelPlugin> = {
+const basePlugins: Record<'rc' | 'beam' | 'normal', ExperimentModelPlugin> = {
   rc: {
     id: 'rc',
     name: 'RC 充电',
@@ -119,35 +144,269 @@ export const experimentPlugins: Record<Model['kind'], ExperimentModelPlugin> = {
     samplePrompt: '使用正态分布示例',
   },
 }
-export function validModel(value: unknown): value is Model {
-  if (!value || typeof value !== 'object') return false
-  const m = value as Model,
-    plugin = experimentPlugins[m.kind]
-  return (
-    !!plugin &&
-    Array.isArray(m.values) &&
-    m.values.length === plugin.parameterSchema.length &&
-    m.values.every(
-      (v, i) =>
-        Number.isFinite(v) &&
-        v >= plugin.parameterSchema[i]!.min &&
-        v <= plugin.parameterSchema[i]!.max,
-    ) &&
-    (m.kind !== 'normal' || Number.isInteger(m.values[2]))
-  )
+export const experimentPlugins = Object.assign(basePlugins, {
+  damped: {
+    id: 'damped',
+    name: '阻尼简谐振动',
+    discipline: '大学物理',
+    summary: '欠阻尼自由振动，忽略外力；紫色为正负包络',
+    parameterSchema: [
+      parameter('振幅', 'm', 1, 0.01, 100, 0.01),
+      parameter('阻尼比', '', 0.15, 0.001, 0.999, 0.01),
+      parameter('固有角频率', 'rad/s', 3, 0.01, 100, 0.1),
+    ],
+    compute(v: number[]) {
+      const [A, z, w] = v as [number, number, number],
+        tau = 1 / (z * w),
+        T = Math.min(10 * tau, (40 * Math.PI) / w)
+      return {
+        points: points(
+          v,
+          (_, r) => A * Math.exp(-z * w * T * r) * Math.cos(w * Math.sqrt(1 - z * z) * T * r),
+          T,
+        ),
+        comparisonPoints: Array.from({ length: 101 }, (_, i) => ({
+          x: (T * i) / 100,
+          y: A * Math.exp((-z * w * T * i) / 100),
+        })),
+        lowerEnvelope: Array.from({ length: 101 }, (_, i) => ({
+          x: (T * i) / 100,
+          y: -A * Math.exp((-z * w * T * i) / 100),
+        })),
+        metrics: { 衰减时间常数: tau, 阻尼角频率: w * Math.sqrt(1 - z * z) },
+      }
+    },
+    samplePrompt: '使用阻尼振动示例',
+  },
+  projectile: {
+    id: 'projectile',
+    name: '抛体运动',
+    discipline: '大学物理',
+    summary: '无空气阻力，平坦落地面',
+    parameterSchema: [
+      parameter('初速度', 'm/s', 20, 0.1, 1000, 0.1),
+      parameter('仰角', '°', 45, 0.1, 89.9, 0.1),
+      parameter('初始高度', 'm', 0, 0, 1000, 0.1),
+      parameter('重力加速度', 'm/s²', 9.81, 0.1, 100, 0.01),
+    ],
+    compute(v: number[]) {
+      const [speed, deg, h, g] = v as [number, number, number, number],
+        vy = speed * Math.sin((deg * Math.PI) / 180),
+        vx = speed * Math.cos((deg * Math.PI) / 180),
+        t = (vy + Math.sqrt(vy * vy + 2 * g * h)) / g
+      return {
+        points: Array.from({ length: 201 }, (_, i) => {
+          const s = (t * i) / 200
+          return { x: vx * s, y: h + vy * s - (g * s * s) / 2 }
+        }),
+        metrics: { 射程: vx * t, 最大高度: h + (vy * vy) / (2 * g), 飞行时间: t },
+      }
+    },
+    samplePrompt: '使用抛体运动示例',
+  },
+  power: {
+    id: 'power',
+    name: '最大功率传输',
+    discipline: '电工电子',
+    summary: '理想电动势与串联内阻；绿色功率(W)，紫色效率(0—1)，双量纲勿直接比较幅值',
+    parameterSchema: [
+      parameter('电动势', 'V', 12, 0.01, 1000, 0.1),
+      parameter('内阻', 'Ω', 10, 0.01, 10000, 0.1),
+      parameter('负载电阻', 'Ω', 10, 0, 100000, 0.1),
+    ],
+    compute(v: number[]) {
+      const [E, r, R] = v as [number, number, number],
+        max = Math.max(5 * r, 1.2 * R)
+      return {
+        points: points(v, (_, s) => (E * E * max * s) / (r + max * s) ** 2, max),
+        comparisonPoints: points(v, (_, s) => (max * s) / (r + max * s), max),
+        metrics: {
+          最大功率: (E * E) / (4 * r),
+          最大功率对应电阻: r,
+          当前负载功率: (E * E * R) / (r + R) ** 2,
+          当前效率: R / (r + R),
+        },
+      }
+    },
+    samplePrompt: '使用最大功率示例',
+  },
+  binomial: {
+    id: 'binomial',
+    name: '二项分布',
+    discipline: '数学与统计',
+    summary: 'n 次独立同分布伯努利试验',
+    parameterSchema: [
+      parameter('试验次数', '', 20, 1, 200, 1),
+      parameter('成功概率', '', 0.5, 0, 1, 0.01),
+    ],
+    compute(v: number[]) {
+      const [n, p] = v as [number, number]
+      const result = Array.from({ length: n + 1 }, (_, k) => {
+        let log = 0
+        for (let j = 1; j <= k; j++) log += Math.log((n - j + 1) / j)
+        return {
+          x: k,
+          y:
+            p === 0
+              ? k === 0
+                ? 1
+                : 0
+              : p === 1
+                ? k === n
+                  ? 1
+                  : 0
+                : Math.exp(log + k * Math.log(p) + (n - k) * Math.log1p(-p)),
+        }
+      })
+      return { points: result, metrics: { 期望: n * p, 方差: n * p * (1 - p) } }
+    },
+    samplePrompt: '使用二项分布示例',
+  },
+} as Record<Exclude<BuiltinKind, 'rc' | 'beam' | 'normal'>, ExperimentModelPlugin>)
+
+export function formulaResult(m: FormulaModel) {
+  const fn = compileFormula(m.expression, [m.xVar, ...m.params.map((p) => p.symbol)])
+  const vars = Object.fromEntries(m.params.map((p) => [p.symbol, p.value]))
+  const points = Array.from({ length: 401 }, (_, i) => {
+    const x = m.xMin + ((m.xMax - m.xMin) * i) / 400
+    return { x, y: fn({ ...vars, [m.xVar]: x }) }
+  })
+  if (points.some((p) => !Number.isFinite(p.y) || Math.abs(p.y) > 1e12))
+    throw Error('区间存在奇点、溢出或非实数，请缩小区间')
+  return {
+    points,
+    metrics: {
+      峰值: Math.max(...points.map((p) => p.y)),
+      谷值: Math.min(...points.map((p) => p.y)),
+    },
+  }
 }
-export function valueAt(model: Model, ratio: number) {
-  if (model.kind === 'rc') return rcValue(model.values, ratio)
-  if (model.kind === 'beam') return beamValue(model.values, ratio)
-  const z = 8 * ratio - 4
-  return Math.exp((-z * z) / 2) / (model.values[1]! * Math.sqrt(2 * Math.PI))
+export function modelValues(m: Model) {
+  return m.kind === 'formula' ? m.params.map((p) => p.value) : m.values
+}
+export function pluginFor(m: Model): Omit<ExperimentModelPlugin, 'id'> {
+  if (m.kind !== 'formula') return experimentPlugins[m.kind]
+  return {
+    name: m.title,
+    discipline: m.discipline || '通用数学绘图',
+    summary: m.summary || m.expression,
+    parameterSchema: m.params.map((p) => ({
+      name: p.name,
+      unit: p.unit || '',
+      defaultValue: p.value,
+      min: p.min,
+      max: p.max,
+      step: p.step,
+    })),
+    compute: (values) =>
+      formulaResult({ ...m, params: m.params.map((p, i) => ({ ...p, value: values[i]! })) }),
+    samplePrompt: '绘制自定义公式',
+  }
+}
+export function computeModel(m: Model) {
+  return pluginFor(m).compute(modelValues(m))
+}
+export function editModel(m: Model, index: number, value: number): Model {
+  return m.kind === 'formula'
+    ? { ...m, params: m.params.map((p, i) => (i === index ? { ...p, value } : p)) }
+    : { ...m, values: m.values.map((v, i) => (i === index ? value : v)) }
+}
+export function validModel(value: unknown): value is Model {
+  try {
+    if (!value || typeof value !== 'object') return false
+    const m = value as Model
+    if (m.kind === 'formula') {
+      if (
+        typeof m.title !== 'string' ||
+        !m.title.trim() ||
+        m.title.length > 120 ||
+        typeof m.expression !== 'string' ||
+        !Array.isArray(m.params) ||
+        m.params.length > 8
+      )
+        return false
+      const names = [m.xVar, ...m.params.map((p) => p.symbol)]
+      if (
+        names.some(
+          (n) =>
+            typeof n !== 'string' ||
+            !/^[A-Za-z][A-Za-z0-9_]{0,15}$/.test(n) ||
+            [
+              'pi',
+              'e',
+              'sin',
+              'cos',
+              'tan',
+              'asin',
+              'acos',
+              'atan',
+              'exp',
+              'log',
+              'ln',
+              'sqrt',
+              'abs',
+              'pow',
+              'min',
+              'max',
+            ].includes(n),
+        ) ||
+        new Set(names).size !== names.length
+      )
+        return false
+      if (
+        !Number.isFinite(m.xMin) ||
+        !Number.isFinite(m.xMax) ||
+        m.xMax <= m.xMin ||
+        Math.max(Math.abs(m.xMin), Math.abs(m.xMax)) > 1e6
+      )
+        return false
+      if (
+        m.params.some(
+          (p) =>
+            typeof p.name !== 'string' ||
+            p.name.length > 80 ||
+            ![p.value, p.min, p.max, p.step].every(Number.isFinite) ||
+            p.min >= p.max ||
+            p.step <= 0 ||
+            p.value < p.min ||
+            p.value > p.max,
+        )
+      )
+        return false
+      formulaResult(m)
+      return true
+    }
+    const plugin = experimentPlugins[m.kind]
+    return (
+      !!plugin &&
+      Array.isArray(m.values) &&
+      m.values.length === plugin.parameterSchema.length &&
+      m.values.every(
+        (v, i) =>
+          Number.isFinite(v) &&
+          v >= plugin.parameterSchema[i]!.min &&
+          v <= plugin.parameterSchema[i]!.max,
+      ) &&
+      (m.kind !== 'normal' || Number.isInteger(m.values[2])) &&
+      (m.kind !== 'binomial' || Number.isInteger(m.values[0])) &&
+      computeModel(m).points.every((p) => Number.isFinite(p.y))
+    )
+  } catch {
+    return false
+  }
+}
+export function valueAt(m: Model, ratio: number) {
+  if (m.kind === 'rc') return rcValue(m.values, ratio)
+  if (m.kind === 'beam') return beamValue(m.values, ratio)
+  const p = computeModel(m).points
+  return p[Math.round(Math.max(0, Math.min(1, ratio)) * (p.length - 1))]!.y
 }
 export function extent(m: Model) {
-  if (m.kind === 'rc') return (5 * m.values[0]! * m.values[1]!) / 1000
-  return m.kind === 'beam' ? m.values[0]! : 8 * m.values[1]!
+  const p = computeModel(m).points
+  return p[p.length - 1]!.x - p[0]!.x
 }
 
-function parseRc(question: string, previous?: Model): Model | undefined {
+function parseRc(question: string, previous?: Model): { kind: 'rc'; values: number[] } | undefined {
   const resistance = question.match(
     /电阻\s*(?:改为|改成|设为|设置为)?\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(k?Ω|千欧|欧姆)/i,
   )
@@ -240,5 +499,21 @@ export function normalCdf(z: number) {
   return (1 + erf) / 2
 }
 export function defaultModel(kind: Model['kind']): Model {
+  if (kind === 'formula')
+    return {
+      kind,
+      title: '阻尼余弦函数',
+      expression: 'A * exp(-k * x) * cos(w * x)',
+      xVar: 'x',
+      xLabel: 'x',
+      yLabel: 'y',
+      xMin: 0,
+      xMax: 10,
+      params: [
+        { name: '振幅', symbol: 'A', value: 1, min: 0, max: 10, step: 0.1 },
+        { name: '衰减系数', symbol: 'k', value: 0.2, min: 0, max: 2, step: 0.01 },
+        { name: '角频率', symbol: 'w', value: 3, min: 0.1, max: 10, step: 0.1 },
+      ],
+    }
   return { kind, values: experimentPlugins[kind].parameterSchema.map((p) => p.defaultValue) }
 }

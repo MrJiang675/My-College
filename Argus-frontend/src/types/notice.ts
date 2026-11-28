@@ -8,6 +8,15 @@ export type StudentExperience = {
   source: string
 }
 export type NoticeAnalysis = {
+  attachmentWarnings?: string[]
+  opportunity?: {
+    level: string
+    audience: string
+    benefit: string
+    credit: string
+    risks: string[]
+  }
+
   answer: string
   eligibility: { status: 'GREEN' | 'YELLOW' | 'RED'; summary: string; evidences: string[] }
   missingDocuments: string[]
