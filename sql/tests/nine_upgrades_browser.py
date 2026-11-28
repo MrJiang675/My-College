@@ -89,7 +89,7 @@ def main():
         assert state['entries'][0]['text']=='本人完成标定与误差分析'
         print('PASS legacy experience redirect and editable saved contribution')
         page.goto(BASE+'/app/college/mock-interview')
-        page.get_by_role('button',name='一键带入「我的经历」',exact=True).click()
+        page.get_by_role('button',name='一键导入「我的经历」',exact=True).click()
         page.get_by_role('button',name='生成 5 道面试题',exact=True).click()
         for i in range(5):
             page.get_by_label('我的回答',exact=True).fill(f'本人完成标定的第{i+1}步，证据见项目报告。')

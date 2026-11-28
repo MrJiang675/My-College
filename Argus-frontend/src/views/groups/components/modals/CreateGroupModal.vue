@@ -12,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const name = ref('')
+const scene=ref('课程设计')
 const description = ref('')
 const error = ref('')
 
@@ -34,7 +35,7 @@ function handleSubmit() {
   }
   emit('submit', {
     name: name.value.trim(),
-    description: description.value.trim() || undefined,
+    description: '【'+scene.value+'】'+description.value.trim(),
   })
 }
 </script>
@@ -69,13 +70,14 @@ function handleSubmit() {
         />
       </label>
 
+      <label class="form-field"><span class="form-field__label">协作场景</span><select v-model="scene" class="form-field__input"><option v-for="item in ['竞赛组队','课程设计','科研合作','学习互助']" :key="item">{{item}}</option></select></label>
       <label class="form-field">
         <span class="form-field__label">小组描述 <small>（可选）</small></span>
         <textarea
           v-model="description"
-          maxlength="512"
+          maxlength="480"
           rows="4"
-          placeholder="描述这个小组的用途与协作范围"
+          placeholder="目标：准备什么比赛/课程；缺口：需要什么角色；时间：每周投入多久"
           class="form-field__textarea"
         />
       </label>

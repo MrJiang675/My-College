@@ -338,6 +338,7 @@ async function handleLeaveGroup(groupId: number) {
     actionIds.leaving.delete(groupId)
   }
 }
+defineExpose({openCreate:()=>showCreateModal.value=true,openJoin:()=>showJoinModal.value=true,openManage:openManageModal,reload:loadInitialData})
 </script>
 
 <template>

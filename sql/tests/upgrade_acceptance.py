@@ -84,7 +84,7 @@ def main():
         p1.get_by_role("heading",name="申请要求逐项对照",exact=True).wait_for()
         p1.goto(BASE+"/app/college/campus")
         p1.wait_for_url("**/app/college/opps?view=affairs")
-        p1.get_by_role("heading",name="原文核查台",exact=True).wait_for()
+        p1.get_by_role("heading",name="通知防坑行动台",exact=True).wait_for()
         print("PASS old-route redirects and project-to-experience-to-career")
         p1.goto(BASE+"/app/college/practice")
         p1.get_by_role("button",name="RC 充电",exact=True).click()

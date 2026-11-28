@@ -37,7 +37,7 @@ onMounted(() => {
           }
         })
       },
-      { threshold: 0.15 }
+      { threshold: 0.15 },
     )
     reveals.forEach((el) => obs.observe(el))
   })
@@ -46,41 +46,34 @@ onMounted(() => {
 const features = [
   {
     icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-    title: '文档知识管理',
-    desc: '上传受支持的文档后自动解析、切片并建立检索索引。',
+    title: '群通知防坑行动闭环',
+    desc: '按学院年级核对资格，带着缺失文件问老师，把已确认截止时间导出日历。',
   },
   {
     icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M19 19L16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-    title: '知识库问答',
-    desc: '群组内提问，混合检索（关键词 + 语义向量）驱动 LLM 生成可溯源回答。',
+    title: '校园小组与项目协作',
+    desc: '通过场景和邀请找到队友，共用资料，把团队成果与本人贡献分开沉淀。',
   },
   {
     icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 12C8.5 10.067 10.067 8.5 12 8.5C13.933 8.5 15.5 10.067 15.5 12C15.5 13.933 13.933 15.5 12 15.5C10.067 15.5 8.5 13.933 8.5 12Z" stroke="currentColor" stroke-width="1.5"/></svg>`,
-    title: 'AI 智能助手',
-    desc: '多轮对话 Agent，支持 SSE 流式输出、工具编排与短期记忆管理。',
-  },
-  {
-    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="15" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3 18V17C3 14.7909 4.79086 13 7 13H11C13.2091 13 15 14.7909 15 17V18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M15 13H17C19.2091 13 21 14.7909 21 17V18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-    title: '团队协作',
-    desc: '创建知识库群组，邀请成员，审批申请，群组间数据隔离。',
-  },
-  {
-    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M8 3H5C3.89543 3 3 3.89543 3 5V8M21 8V5C21 3.89543 20.1046 3 19 3H16M3 16V19C3 20.1046 3.89543 21 5 21H8M16 21H19C20.1046 21 21 20.1046 21 19V16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-    title: '答案溯源',
-    desc: '每条回答附带引用片段与相关度评分，让 AI 回答有据可查。',
-  },
-  {
-    icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor" stroke-width="1.5"/><path d="M12 7V12L15 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-    title: '安全保障',
-    desc: '三级权限体系，JWT + BCrypt 认证，全链路数据加密。',
+    title: '经历驱动的模拟面试',
+    desc: '带入自己的项目经历和目标方向，专盯证据薄弱点提问，逐题复盘二轮追问。',
   },
 ]
 
 const steps = [
-  { num: '01', title: '创建群组，组建团队', desc: '创建知识库群组，通过邀请码或审批机制邀请成员加入协作。' },
-  { num: '02', title: '上传文档，自动入库', desc: '上传文档至群组知识库，系统自动完成切片、向量化与索引。' },
-  { num: '03', title: '提问检索，获取答案', desc: '在知识库内提问，混合检索驱动 LLM 生成带引用的可信回答。' },
-  { num: '04', title: 'AI 助手，持续对话', desc: 'Agent 自主编排工具调用，流式输出，短期记忆管理。' },
+  { num: '01', title: '贴一份群通知', desc: '文字、截图或文件，先核对识别原文。' },
+  {
+    num: '02',
+    title: '核资格，问清口径',
+    desc: '红绿灯只是起点，缺失院级文件要带着具体问题问老师。',
+  },
+  { num: '03', title: '把下一步排进日历', desc: '核对材料包，只把已确认日期导出为本机日程。' },
+  {
+    num: '04',
+    title: '用经历完成报名与面试',
+    desc: '从小组项目收录本人贡献，再生成报名陈述和面试追问。',
+  },
 ]
 
 const cases = [
@@ -106,14 +99,22 @@ const cases = [
         <a href="/" class="nav-brand">
           <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
             <defs>
-              <linearGradient id="navGrad" x1="2" y1="2" x2="30" y2="30"><stop stop-color="#4A90D9"/><stop offset="1" stop-color="#5CC9C1"/></linearGradient>
-              <path id="navPetal" d="M16 3C17.5 6 20 9 22.5 10C20 11 17.5 11.5 16 13C14.5 11.5 12 11 9.5 10C12 9 14.5 6 16 3Z" fill="url(#navGrad)" opacity="0.7"/>
+              <linearGradient id="navGrad" x1="2" y1="2" x2="30" y2="30">
+                <stop stop-color="#4A90D9" />
+                <stop offset="1" stop-color="#5CC9C1" />
+              </linearGradient>
+              <path
+                id="navPetal"
+                d="M16 3C17.5 6 20 9 22.5 10C20 11 17.5 11.5 16 13C14.5 11.5 12 11 9.5 10C12 9 14.5 6 16 3Z"
+                fill="url(#navGrad)"
+                opacity="0.7"
+              />
             </defs>
-            <use href="#navPetal"/>
-            <use href="#navPetal" transform="rotate(90 16 16)"/>
-            <use href="#navPetal" transform="rotate(180 16 16)"/>
-            <use href="#navPetal" transform="rotate(270 16 16)"/>
-            <circle cx="16" cy="16" r="5.5" fill="url(#navGrad)"/>
+            <use href="#navPetal" />
+            <use href="#navPetal" transform="rotate(90 16 16)" />
+            <use href="#navPetal" transform="rotate(180 16 16)" />
+            <use href="#navPetal" transform="rotate(270 16 16)" />
+            <circle cx="16" cy="16" r="5.5" fill="url(#navGrad)" />
           </svg>
           <span>Argus 学生工作台</span>
         </a>
@@ -140,23 +141,40 @@ const cases = [
       <div class="hero-content container">
         <div class="hero-badge">
           <span class="badge-pulse"></span>
-          RAG + Agent · 大学生 AI 学习工作台
+          校园通知防坑 · 项目协作 · 经历驱动面试
         </div>
         <h1 class="hero-title">
-          让每一次提问<br>
-          <span class="text-gradient">都有据可查</span>
+          群通知，看懂了<br />
+          <span class="text-gradient">更要知道下一步</span>
         </h1>
         <p class="hero-desc">
-          基于检索增强生成与 AI Agent 技术，将课程资料知识库与大语言模型深度融合，
-          实现精准溯源、自主编排的可信智能知识服务。
+          先按学院和年级核对资格，把缺失文件变成问老师的话术，把截止时间导出日历。
+          再把小组项目中的个人贡献沉淀为经历，用真实证据准备针对性面试。
         </p>
-        <div class="hero-actions"><RouterLink class="btn-outline" to="/preview">先体验内置样例</RouterLink>
+        <div class="hero-actions">
+          <RouterLink class="btn-outline" to="/preview?module=opps">先体验通知防坑闭环</RouterLink>
           <button class="btn-primary" @click="openAuthModal(true)">
             开始使用
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M5 12H19M19 12L13 6M19 12L13 18"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
           </button>
           <button class="btn-outline" @click="navigateToApp()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 6L14 12L8 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M8 6L14 12L8 18"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
             进入我的大学
           </button>
         </div>
@@ -187,12 +205,17 @@ const cases = [
       <div class="container">
         <div class="section-header scroll-reveal">
           <span class="section-tag">核心功能</span>
-          <h2 class="section-title">覆盖知识管理全链路</h2>
-          <p class="section-desc">从文档入库到 AI 对话，一站式构建企业智能知识服务体系</p>
+          <h2 class="section-title">从群通知到可执行的下一步</h2>
+          <p class="section-desc">通知核查是起点，小组协作沉淀经历，模拟面试追问证据薄弱点。</p>
         </div>
 
         <div class="features-grid">
-          <div v-for="(f, i) in features" :key="i" class="feature-card scroll-reveal" :style="{ transitionDelay: `${i * 0.06}s` }">
+          <div
+            v-for="(f, i) in features"
+            :key="i"
+            class="feature-card scroll-reveal"
+            :style="{ transitionDelay: `${i * 0.06}s` }"
+          >
             <div class="feature-icon" v-html="f.icon"></div>
             <h3>{{ f.title }}</h3>
             <p>{{ f.desc }}</p>
@@ -206,12 +229,17 @@ const cases = [
       <div class="container container-narrow">
         <div class="section-header scroll-reveal">
           <span class="section-tag">工作流程</span>
-          <h2 class="section-title">四步开启智能知识服务</h2>
+          <h2 class="section-title">把大学里的信息差，变成行动清单</h2>
           <p class="section-desc">从零到一，快速构建企业级 RAG 应用</p>
         </div>
 
         <div class="steps-list">
-          <div v-for="(s, i) in steps" :key="s.num" class="step-row scroll-reveal" :style="{ transitionDelay: `${i * 0.08}s` }">
+          <div
+            v-for="(s, i) in steps"
+            :key="s.num"
+            class="step-row scroll-reveal"
+            :style="{ transitionDelay: `${i * 0.08}s` }"
+          >
             <div class="step-num">{{ s.num }}</div>
             <div class="step-divider-v"></div>
             <div class="step-card">
@@ -233,7 +261,12 @@ const cases = [
         </div>
 
         <div class="cases-grid">
-          <div v-for="(c, i) in cases" :key="i" class="case-card scroll-reveal" :style="{ transitionDelay: `${i * 0.06}s` }">
+          <div
+            v-for="(c, i) in cases"
+            :key="i"
+            class="case-card scroll-reveal"
+            :style="{ transitionDelay: `${i * 0.06}s` }"
+          >
             <div class="case-icon" v-html="caseIcons[c.icon]"></div>
             <h3>{{ c.title }}</h3>
             <p>{{ c.desc }}</p>
@@ -248,7 +281,7 @@ const cases = [
         <div class="cta-card scroll-reveal">
           <div class="cta-bg-orb cta-orb-1"></div>
           <div class="cta-bg-orb cta-orb-2"></div>
-          <h2>准备好构建您的<br>智能知识平台了吗？</h2>
+          <h2>准备好构建您的<br />智能知识平台了吗？</h2>
           <p>立即体验企业级 RAG + Agent 解决方案，让每一次提问都有据可查。</p>
           <div class="cta-buttons">
             <button class="btn-cta-primary" @click="openAuthModal(true)">体验用户</button>
@@ -266,14 +299,22 @@ const cases = [
             <div class="footer-logo-row">
               <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
                 <defs>
-                  <linearGradient id="ftGrad" x1="2" y1="2" x2="30" y2="30"><stop stop-color="#4A90D9"/><stop offset="1" stop-color="#5CC9C1"/></linearGradient>
-                  <path id="ftPetal" d="M16 3C17.5 6 20 9 22.5 10C20 11 17.5 11.5 16 13C14.5 11.5 12 11 9.5 10C12 9 14.5 6 16 3Z" fill="url(#ftGrad)" opacity="0.7"/>
+                  <linearGradient id="ftGrad" x1="2" y1="2" x2="30" y2="30">
+                    <stop stop-color="#4A90D9" />
+                    <stop offset="1" stop-color="#5CC9C1" />
+                  </linearGradient>
+                  <path
+                    id="ftPetal"
+                    d="M16 3C17.5 6 20 9 22.5 10C20 11 17.5 11.5 16 13C14.5 11.5 12 11 9.5 10C12 9 14.5 6 16 3Z"
+                    fill="url(#ftGrad)"
+                    opacity="0.7"
+                  />
                 </defs>
-                <use href="#ftPetal"/>
-                <use href="#ftPetal" transform="rotate(90 16 16)"/>
-                <use href="#ftPetal" transform="rotate(180 16 16)"/>
-                <use href="#ftPetal" transform="rotate(270 16 16)"/>
-                <circle cx="16" cy="16" r="5.5" fill="url(#ftGrad)"/>
+                <use href="#ftPetal" />
+                <use href="#ftPetal" transform="rotate(90 16 16)" />
+                <use href="#ftPetal" transform="rotate(180 16 16)" />
+                <use href="#ftPetal" transform="rotate(270 16 16)" />
+                <circle cx="16" cy="16" r="5.5" fill="url(#ftGrad)" />
               </svg>
               <span>Argus 学生工作台</span>
             </div>
@@ -974,22 +1015,53 @@ const caseIcons: Record<string, string> = {
 
 /* ════════════ Responsive ════════════ */
 @media (max-width: 1024px) {
-  .features-grid { grid-template-columns: repeat(2, 1fr); }
-  .cases-grid { grid-template-columns: repeat(2, 1fr); }
-  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .cases-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 768px) {
-  .nav-links { display: none; }
-  .hero { padding: 140px 0 60px; }
-  .hero-title { font-size: 36px; }
-  .hero-actions { flex-direction: column; align-items: center; }
-  .hero-metrics { gap: 24px; }
-  .metric-value { font-size: 26px; }
-  .features-grid { grid-template-columns: 1fr; }
-  .cases-grid { grid-template-columns: 1fr 1fr; }
-  .cta-card { padding: 48px 24px; }
-  .cta-buttons { flex-direction: column; align-items: center; }
-  .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+  .nav-links {
+    display: none;
+  }
+  .hero {
+    padding: 140px 0 60px;
+  }
+  .hero-title {
+    font-size: 36px;
+  }
+  .hero-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  .hero-metrics {
+    gap: 24px;
+  }
+  .metric-value {
+    font-size: 26px;
+  }
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+  .cases-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cta-card {
+    padding: 48px 24px;
+  }
+  .cta-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
 }
 </style>
