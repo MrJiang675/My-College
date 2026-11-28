@@ -76,3 +76,9 @@
 - 涉及文件：前端 api/http 与 SSE API、DefaultLayout/router、MaterialFileUploader、ContextualAssistantDrawer、MockInterviewView、UnifiedQaAssistantView、工作台与主题样式；后端 CollegeFileExtractController、MockInterviewController、WorkspaceController、NoticeController、文件上传与解析器；application 配置、deploy 模板与本次测试。完整清单见 upgrade-nine-prompts-report.md。
 - 改动内容摘要：REST 与 SSE 共用单次刷新重试；工作台 800ms 防抖与最多两次自动重试、备份/清理恢复；树形侧栏；经历并入项目，问答双 Tab；云端 OCR 与短文档提取；五题面试及导出；50 MB/3 MB 分片与磁盘合并；深色主题及醒目切换。
 - 对接注意事项：知识库默认 50 MiB，multipart 60 MiB，Nginx 60m；短材料文档 15 MiB、图片 5 MiB。新增 ARGUS_VISION_MODEL、ARGUS_VISION_MAX_IMAGE_MB、ARGUS_VISION_TIMEOUT_SECONDS，沿用后端 ZHIPUAI_API_KEY。旧路由保留跳转。没有数据库迁移，没有部署公网服务器；云端模型可用性和容量验收以本次报告为准。
+
+## [2026-11-28] 战略对齐：通知防坑、校园协作与经历驱动面试
+- 改动动机：聚焦通知截图/原文到资格核查、问老师、日历与报名陈述的行动闭环，强化小组贡献沉淀和面试证据深挖。
+- 涉及文件：TaskController、NoticeAnalysisSupport、NoticeApplicationController、GroupCollaborationController/Mapper、MockInterviewController 与对应 Skill/测试；NoticeActionDashboard、noticeScenarios、icsExport、CollaborationOverview、小组容器/创建对话框、MockInterviewView、工作台协调与首页/引导文案。完整清单见 strategy-alignment-report-2026-11-28.md。
+- 改动内容摘要：证据约束红绿灯、问老师话术、纯浏览器 .ics；成员范围小组统计、场景与邀请文案、AI 分拆团队/本人贡献；携带经历与目标的面试薄弱点和二轮追问。
+- 对接注意事项：无 DDL、无新密钥配置，建议先发兼容后端再发前端；小组 description 增加场景前缀，旧纯文本照常显示。实验模型、实验台与实践 Skill 零改动，RAG 检索/低内存配置不变。示例协作数据明确标记且不计真实统计；具体测试和外部模型限制以本次报告为准。

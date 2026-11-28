@@ -39,4 +39,12 @@ class MockInterviewControllerTest {
   var captor=org.mockito.ArgumentCaptor.forClass(Prompt.class);verify(model).call(captor.capture());
   assertEquals(4096,captor.getValue().getOptions().getMaxTokens());
  }
+ @Test void incompleteQuestionListGetsOnlyOneBoundedRepair()throws Exception {
+  var model=mock(ChatModel.class);var c=new MockInterviewController(mock(CurrentUserService.class),model,new ObjectMapper());
+  String one="{\"category\":\"贡献\",\"question\":\"你完成了什么？\",\"focusPoint\":\"证据\"}";
+  String full="{\"questions\":["+String.join(",",java.util.Collections.nCopies(5,one))+"]}";
+  when(model.call(any(Prompt.class))).thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("{\"questions\":[]}")))),new ChatResponse(List.of(new Generation(new AssistantMessage(full)))));
+  assertEquals(5,c.generate(new MockInterviewController.Request("本人完成清洗","实习","实习技术/业务面",null,null)).data().path("questions").size());
+  verify(model,times(2)).call(any(Prompt.class));
+ }
 }

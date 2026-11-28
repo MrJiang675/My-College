@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import http, { extractApiError } from '@/api/http'
+import { useRoute } from 'vue-router'
+const route = useRoute()
 import MaterialFileUploader from '@/components/MaterialFileUploader.vue'
 type Question = {
   id: string
   index: number
   category: string
   question: string
+  targetWeakness?: string
   focusPoint: string
 }
 type Feedback = {
   score: number
   strengths: string
   weaknesses: string
+  followUpHint?: string
   improvedAnswerSample: string
 }
 type Report = {
@@ -25,22 +29,30 @@ type Report = {
 const step = ref(1),
   resume = ref(''),
   target = ref(''),
-  type = ref('实习技术面'),
+  type = ref('实习技术/业务面'),
   busy = ref(false),
   error = ref(''),
   index = ref(0)
 const profile = ref({ school: '', college: '', major: '', grade: '' }),
-  entries = ref<{ project: string; text: string; source: string }[]>([])
+  entries = ref<{ id: string; project: string; text: string; source: string; team?: string }[]>([])
 const questions = ref<Question[]>([]),
   answers = ref<string[]>(Array(5).fill('')),
   report = ref<Report>()
 const current = computed(() => questions.value[index.value]),
   answered = computed(() => answers.value.filter((a) => a.trim()).length)
+const selectedIds = ref<string[]>([])
+const selectedEntries = computed(() =>
+  entries.value.filter((e) => selectedIds.value.includes(e.id)),
+)
 let controller: AbortController | undefined
 onMounted(async () => {
   try {
     const state = JSON.parse((await http.get('/college/workspace')).data.data.payload)
     entries.value = state.entries || []
+    const career = state.pages?.['career-' + String(route.query.track || state.track || '实习')]
+    selectedIds.value = career?.selected || []
+    target.value = career?.targetRole || ''
+    if (selectedIds.value.length) importEntries()
     profile.value = {
       school: state.school || '',
       college: state.dept || '',
@@ -53,10 +65,20 @@ onMounted(async () => {
 })
 onUnmounted(() => controller?.abort())
 function importEntries() {
-  resume.value = entries.value
-    .map((e) => `${e.project}\n个人贡献：${e.text}\n证明位置：${e.source || '待补充'}`)
+  if (!selectedIds.value.length) selectedIds.value = entries.value.map((e) => e.id)
+  resume.value = selectedEntries.value
+    .map(
+      (e) =>
+        `${e.project}\n个人贡献：${e.text}\n团队成果：${e.team || '未填写'}\n证明位置：${e.source || '待补充'}`,
+    )
     .join('\n\n')
   if (!resume.value) error.value = '还没有经历，请先录入项目或直接粘贴简历。'
+}
+function loadResumeExample() {
+  resume.value =
+    '【内置简历示例，需替换本人事实】信息工程学院大三，拟申请数据分析实习。团队完成校园出行调查，我参与数据处理，声称效率明显提升但未记录基线。团队获奖但本人工作与团队成果尚未拆清，公开证明链接缺失。'
+  target.value = '数据分析实习'
+  selectedIds.value = []
 }
 function extracted(text: string) {
   resume.value = text
@@ -67,10 +89,15 @@ function requestBody() {
     targetRole: target.value,
     interviewType: type.value,
     campusProfile: profile.value,
+    selectedExperiences: selectedEntries.value,
   }
 }
 async function generate() {
   if (busy.value) return
+  if (selectedIds.value.length > 12) {
+    error.value = '每轮最多选择12项经历'
+    return
+  }
   busy.value = true
   error.value = ''
   controller = new AbortController()
@@ -108,6 +135,7 @@ async function evaluate() {
         answers: questions.value.map((q, i) => ({
           question: q.question,
           category: q.category,
+          targetWeakness: q.targetWeakness,
           userAnswer: answers.value[i] || '',
         })),
       },
@@ -131,7 +159,7 @@ function exportReport() {
     questions.value
       .map((q, i) => {
         const f = r.questionFeedbacks[i]!
-        return `## ${i + 1}. ${q.question}\n\n我的回答：${answers.value[i] || '未作答'}\n\n分数：${f.score}\n\n亮点：${f.strengths}\n\n改进点：${f.weaknesses}\n\n示范：${f.improvedAnswerSample}\n`
+        return `## ${i + 1}. ${q.question}\n\n我的回答：${answers.value[i] || '未作答'}\n\n分数：${f.score}\n\n亮点：${f.strengths}\n\n改进点：${f.weaknesses}\n\n简历薄弱点：${q.targetWeakness || '需核实'}\n\n示范：${f.improvedAnswerSample}\n\n二轮追问：${f.followUpHint || '请补充个人贡献证据。'}\n`
       })
       .join('\n') +
     '\n## 行动建议\n' +
@@ -159,7 +187,17 @@ function exportReport() {
     </nav>
     <p v-if="error" role="alert" class="error">{{ error }}</p>
     <section v-if="step === 1" class="interview-card">
-      <button :disabled="busy" @click="importEntries">一键带入「我的经历」</button>
+      <button :disabled="busy" @click="importEntries">一键导入「我的经历」</button>
+      <button :disabled="busy" @click="loadResumeExample">载入典型大学生简历示例</button>
+      <fieldset v-if="entries.length">
+        <legend>选择本轮深挖经历（最多12项）</legend>
+        <label v-for="entry in entries" :key="entry.id"
+          ><input v-model="selectedIds" type="checkbox" :value="entry.id" :disabled="busy" />{{
+            entry.project
+          }}
+          · 证明{{ entry.source ? '已填写' : '待补充' }}</label
+        >
+      </fieldset>
       <MaterialFileUploader :disabled="busy" @extracted="extracted" />
       <label
         >简历 / 经历文字<textarea
@@ -173,9 +211,9 @@ function exportReport() {
       <div class="targets">
         <label
           >面试场景<select v-model="type" :disabled="busy">
-            <option>实习技术面</option>
-            <option>保研复试</option>
-            <option>综合答辩</option>
+            <option>实习技术/业务面</option>
+            <option>保研/夏令营面试</option>
+            <option>秋招/校招综合面</option>
           </select></label
         ><label
           >目标岗位 / 专业方向<input
@@ -204,6 +242,10 @@ function exportReport() {
       </div>
       <small>{{ current.category }} · {{ current.focusPoint }}</small>
       <h2>{{ current.question }}</h2>
+      <details>
+        <summary>面试官追问意图（命中简历哪处薄弱点）</summary>
+        <p>{{ current.targetWeakness || '请核对个人行动、结果与证明是否说清。' }}</p>
+      </details>
       <label
         >我的回答<textarea
           v-model="answers[index]"
@@ -240,6 +282,12 @@ function exportReport() {
         <p>亮点：{{ report.questionFeedbacks[i]?.strengths }}</p>
         <p>改进点：{{ report.questionFeedbacks[i]?.weaknesses }}</p>
         <p>示范优化回答：{{ report.questionFeedbacks[i]?.improvedAnswerSample }}</p>
+        <p>
+          潜在二轮追问：{{
+            report.questionFeedbacks[i]?.followUpHint ||
+            '如果请你出示个人贡献的原始证据，你会提供什么？'
+          }}
+        </p>
       </article>
       <h3>接下来可以做</h3>
       <ul>
@@ -247,6 +295,7 @@ function exportReport() {
       </ul>
       <div class="question-nav">
         <button class="primary" @click="exportReport">导出复盘 Markdown</button
+        ><RouterLink to="/app/college/career">回到升学就业优化陈述</RouterLink
         ><button @click="step = 1">再来一轮模拟面试</button>
       </div>
     </section>

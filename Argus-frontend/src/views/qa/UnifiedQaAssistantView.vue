@@ -18,7 +18,7 @@ function select(value: string) {
       </button>
       <button :aria-pressed="mode === 'assistant'" @click="select('assistant')">AI 对话助手</button>
     </nav>
-    <KeepAlive><component :is="mode === 'knowledge' ? QaView : AssistantView" /></KeepAlive>
+    <KeepAlive><component :key="mode+String(route.query.groupId||'')" :is="mode === 'knowledge' ? QaView : AssistantView" /></KeepAlive>
   </section>
 </template>
 <style scoped>

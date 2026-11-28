@@ -1,0 +1,17 @@
+import type { CalendarDeadline } from '@/utils/icsExport'
+export type CampusProfile = { school: string; college: string; major: string; grade: string }
+export type StudentExperience = {
+  id: string
+  project: string
+  text: string
+  team?: string
+  source: string
+}
+export type NoticeAnalysis = {
+  answer: string
+  eligibility: { status: 'GREEN' | 'YELLOW' | 'RED'; summary: string; evidences: string[] }
+  missingDocuments: string[]
+  teacherInquiryScripts: string[]
+  deadlines: (CalendarDeadline & { evidenceQuote?: string })[]
+  checklist: { item: string; required: boolean; formatNote: string; evidenceQuote: string }[]
+}

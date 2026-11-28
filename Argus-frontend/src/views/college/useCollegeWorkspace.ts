@@ -1,3 +1,4 @@
+import type {NoticeAnalysis} from '@/types/notice'
 import { demoSamples, type DemoSample, type DemoPreset } from '@/constants/demoSamples'
 import { presetMode, useDemoPresetReplay } from '@/composables/useDemoPresetReplay'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -17,7 +18,7 @@ import {
   localExperiment,
   type Model,
 } from './models'
-export function useCollegeWorkspace(props: { moduleOverride?: string; previewMode?: boolean }) {
+export function useCollegeWorkspace(props: { moduleOverride?: string; previewMode?: boolean;projectExample?:boolean }) {
   interface Entry {
     id: string
     project: string
@@ -47,6 +48,9 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
     selected?: string[]
     learningMode?: string
     publishedAt?: string
+    noticeAnalysis?: NoticeAnalysis & {contextKey?:string}
+    projectStatus?:'ONGOING'|'DONE'
+    targetRole?:string
     applicationDraft?: string
     requirementStatuses?: Record<string, string>
     sampleId?: string
@@ -102,7 +106,7 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
   }
   const page = ref<Page>(newPage())
   function syncPage() {
-    const key = currentKey.value
+    const key = mod.value==='project'&&route.query.groupId?'project-'+String(route.query.groupId):currentKey.value
     page.value = state.value.pages[key] ??= newPage()
   }
   syncPage()
@@ -199,9 +203,10 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
     { deep: true, flush: 'sync' },
   )
 
-  watch(currentKey, () => {
+  watch([currentKey,()=>route.query.groupId], () => {
     editing.value = false
     warning.value = ''
+    if(mod.value==='project')entryGroup.value=Number(route.query.groupId)||undefined
     syncPage()
   })
 
@@ -266,6 +271,7 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
     window.addEventListener('beforeunload', leave)
     window.addEventListener('argus:open-context-assistant', openContextAssistant)
     await loadWorkspace()
+    if(props.projectExample&&mod.value==='project'&&!page.value.source){page.value.source='【内置协作示例，需替换本人事实】项目：校园出行调查。组长小林统筹进度，队友小陈负责问卷与展示，我负责数据清洗与异常记录。团队形成两个院系的调研报告，尚未公开发表；本人证明位置待补充。';page.value.sourceName='协作进展（内置示例）'}
     if (home.value && localStorage.getItem(OVERVIEW_STORAGE_KEY) !== '1') overviewOpen.value = true
   })
 
@@ -356,18 +362,24 @@ function removeMaterial() {
       career.sourceName = ''
     }
   }
-  function extractProjectDraft() {
-    const text = page.value.source.trim() || page.value.draft.trim()
-    if (!text) {
-      warning.value = '请先粘贴群聊汇报或进展记录。'
-      return
-    }
-    collect(text)
-    project.value = (text.match(/项目(?:名称)?[：:]([^。\n]+)/)?.[1] || '待确认项目').trim()
-    contribution.value = (
-      text.match(/(?:本人|我)(?:负责|完成)[：:]?([^。\n]+)/)?.[0] || text
-    ).trim()
-    evidence.value = text.match(/https?:\/\/[^\s]+/)?.[0] || ''
+  async function extractProjectDraft() {
+    const text=page.value.source.trim()||page.value.draft.trim()
+    if(!text){warning.value='请先粘贴群聊汇报或进展记录。';return}
+    if(busy.value)return
+    busy.value=true;warning.value=''
+    const targetPage=page.value
+    try {
+      const {data}=await http.post('/college/project',{question:'整理项目草稿，严格区分团队成果与原文明确属于我的个人贡献；身份不明时请明确指出。',source:text.slice(0,16000),current:null,moduleCode:'GROUP_PROJECTS'},{timeout:45000})
+      const result=data.data
+      if(closed||page.value!==targetPage)return
+      collect('')
+      project.value=result.projectName||'待确认项目'
+      contribution.value=result.personalContribution||''
+      team.value=result.teamOutcome||''
+      evidence.value=result.evidenceLocation||''
+      entryGroup.value=Number(route.query.groupId)||undefined
+      warning.value=contribution.value?'请核对本人负责部分、团队成果与证明位置后再收录。':'原文未明确“我”的身份或个人贡献，请补充本人负责内容后收录。'
+    }catch(error){warning.value=extractApiError(error)}finally{busy.value=false}
   }
   function archive() {
     if (!project.value.trim() || !contribution.value.trim()) return
@@ -424,12 +436,13 @@ function removeMaterial() {
   }
   async function send() {
     const currentPage = page.value
-    const question = currentPage.draft.trim()
+    const question = currentPage.draft.trim() || (mod.value==='opps'&&currentPage.source.trim()?'请核对这份通知的资格、缺失文件、问老师话术、时间与材料。':'')
     const module = mod.value
     if (!question || busy.value) return
     warning.value = ''
     busy.value = true
     state.value.last = module
+    const noticeContextKey=module==='opps'?JSON.stringify([currentPage.source,{school:state.value.school,college:state.value.dept,major:state.value.major,grade:state.value.grade},adaptProfile.value]):undefined
     const turn: Turn = { q: question, a: '', citations: [] }
     const preset = matchingPreset(currentPage, question)
     const requestController = new AbortController()
@@ -500,6 +513,7 @@ function removeMaterial() {
             if (currentPage.checks?.length) currentPage.model = undefined
           }
         } else {
+          if(module==='opps')currentPage.noticeAnalysis={...action,contextKey:noticeContextKey}
           const quotes: string[] = Array.isArray(action.quotes)
             ? action.quotes.filter(
                 (item: unknown) =>

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 const uploader=ref<InstanceType<typeof MaterialFileUploader>>()
 import {ref} from 'vue'
+function loadNoticeScenario(source:string,name:string){page.value.source=source;page.value.sourceName=name;page.value.sampleId=undefined;page.value.sampleOriginal=undefined}
+function switchNoticeProfile(college:string,grade:string){state.value.dept=college;state.value.grade=grade}
+function saveNoticeStatement(text:string){const key='career-'+state.value.track;state.value.pages[key]??=newPage();state.value.pages[key].applicationDraft=text}
 function exportWorkspace(){const url=URL.createObjectURL(new Blob([JSON.stringify(state.value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='Argus-工作台备份.json';a.click();URL.revokeObjectURL(url)}
 function clearHistory(){if(window.confirm('清空当前页对话？请先导出需要保留的内容。')){page.value.turns=[];flush()}}
 function openGlobalAssistant(){if(props.previewMode){warning.value='当前为样例预览，请登录真实工作台后使用助教。';return}window.dispatchEvent(new CustomEvent('argus:show-assistant'))}
@@ -13,6 +16,7 @@ import { moduleGuides, type ModuleGuideKey } from '@/constants/moduleGuides'
 import { experimentPlugins, defaultModel } from './models'
 import CareerMatrix from './components/CareerMatrix.vue'
 import DemoSampleBar from '@/components/DemoSampleBar.vue'
+import NoticeActionDashboard from './components/NoticeActionDashboard.vue'
 import NoticeEvidencePanel from './components/NoticeEvidencePanel.vue'
 import OpportunitiesPanel from './components/OpportunitiesPanel.vue'
 import WorkspaceOverview from './components/WorkspaceOverview.vue'
@@ -24,7 +28,7 @@ import ModuleGuideHeader from '@/components/ModuleGuideHeader.vue'
 import EmptyExampleCards from '@/components/EmptyExampleCards.vue'
 import ExperimentWorkspace from './ExperimentWorkspace.vue'
 import { useCollegeWorkspace } from './useCollegeWorkspace'
-const props = defineProps<{ moduleOverride?: string; previewMode?: boolean }>()
+const props = defineProps<{ moduleOverride?: string; previewMode?: boolean;projectExample?:boolean }>()
 const {
 loadInterviewExample,
   resetDemoWorkspace,
@@ -96,7 +100,7 @@ loadInterviewExample,
 </script>
 
 <template>
-  <main class="college">
+  <main class="college" :class="{'is-notice-module':mod==='opps'}">
     <div v-if="warning || conflictHint || loadError" class="college-alert" role="alert">
       <span>{{ conflictHint || loadError || warning }}</span>
       <button v-if="loadError" type="button" @click="loadWorkspace">重试</button>
@@ -113,7 +117,7 @@ loadInterviewExample,
         <template #actions>
           <button class="btn-secondary" @click="exportWorkspace">导出工作台备份</button>
           <button v-if="!home" class="btn-secondary" @click="clearHistory">清理本页对话</button>
-          <RouterLink v-if="mod === 'career'" class="btn-primary" to="/app/college/mock-interview">模拟面试 · 上传简历生成追问</RouterLink>
+          <RouterLink v-if="mod === 'career'" class="btn-primary" :to="{path:'/app/college/mock-interview',query:{track:state.track}}">开始模拟面试</RouterLink>
           <button
             v-if="auth.currentUser?.userCode.startsWith('demo_guest_') || props.previewMode"
             type="button"
@@ -229,7 +233,8 @@ loadInterviewExample,
       </template>
 
       <template v-else>
-        <section v-if="mod === 'career'" class="panel" style="padding: 14px">
+        <section v-if="mod === 'career'" class="panel" style="padding: 14px"><label>目标岗位 / 院校方向<input v-model="page.targetRole" maxlength="200" placeholder="例如数据分析实习、信息工程夏令营" /></label>
+
           <button
             class="btn-secondary"
             @click="
@@ -288,6 +293,7 @@ loadInterviewExample,
           </button>
           <p>示例记录带标识，收录前请替换为本人真实成果。</p>
         </section>
+        <section v-if="mod==='opps'" class="panel" style="padding:12px"><strong>从群通知到下一步行动</strong><p>粘贴原文、上传文件或 Ctrl+V 截图 → 核资格 → 问老师 → 导出日历 → 用经历写报名陈述。右侧提供三套内置演示。</p></section>
         <section v-if="mod === 'opps'" class="panel" style="padding: 12px">
           <RouterLink to="/app/college/opps">综合分析</RouterLink> ·
           <RouterLink to="/app/college/opps?view=opportunity">核资格 · 看机会</RouterLink> ·
@@ -298,7 +304,7 @@ loadInterviewExample,
           {{ state.school || '学校未填' }} / {{ state.major || '跨专业任务' }} /
           {{ state.grade || '年级未填' }}</label
         >
-        <DemoSampleBar :module="mod" @load="loadDemoSample" />
+        <DemoSampleBar v-if="mod!=='opps'" :module="mod" @load="loadDemoSample" />
         <button
           v-if="replayEngine.replaying.value"
           type="button"
@@ -307,7 +313,7 @@ loadInterviewExample,
         >
           停止样例演示
         </button>
-        <div class="module-workspace" :class="{ 'is-practice': mod === 'practice' }">
+        <div class="module-workspace" :class="{ 'is-practice': mod === 'practice', 'is-notice':mod==='opps' }">
           <div class="module-main">
             <section v-if="mod === 'learn'" class="panel" style="padding: 10px">
               <button
@@ -374,7 +380,7 @@ loadInterviewExample,
                   <textarea
                     ref="draftInput"
                     v-model="page.draft"
-                    required
+                    :required="mod!=='opps'"
                     maxlength="3500"
                     aria-label="给助手的任务"
                     placeholder="输入问题、实验条件或通知原文…"
@@ -383,7 +389,7 @@ loadInterviewExample,
                 <div class="composer-actions">
                   <small>{{ page.draft.length }} / 3500</small>
                   <button class="btn-primary" type="submit" :disabled="busy">
-                    {{ busy ? '正在处理…' : '发送 →' }}
+                    {{ busy ? '正在处理…' : mod==='opps'?'核查通知 →':'发送 →' }}
                   </button>
                 </div>
               </form>
@@ -510,16 +516,12 @@ loadInterviewExample,
               :name="page.sourceName"
               :group="page.group"
             />
-            <NoticeEvidencePanel
-              v-if="['opps', 'campus'].includes(mod)"
-              :source="page.source"
-              :source-name="page.sourceName"
-              :published-at="page.publishedAt"
-            />
+            <NoticeActionDashboard v-if="mod==='opps'" :source="page.source" :profile="{school:state.school,college:state.dept,major:state.major,grade:state.grade}" :enabled="adaptProfile" v-model:analysis="page.noticeAnalysis" :entries="state.entries" @load="loadNoticeScenario" @profile="switchNoticeProfile" @statement="saveNoticeStatement" />
+
 
             <section v-if="mod === 'project'" class="context-card panel">
               <span class="section-kicker">收录闭环</span>
-              <h2>项目 → 经历</h2>
+              <h2>项目 → 经历</h2><label>当前项目状态<select :value="page.projectStatus||'ONGOING'" @change="page.projectStatus=($event.target as HTMLSelectElement).value as 'ONGOING'|'DONE'"><option value="ONGOING">进行中</option><option value="DONE">已完成</option></select></label>
               <label
                 >粘贴零散记录<textarea
                   v-model="page.source"
@@ -630,3 +632,9 @@ loadInterviewExample,
 </template>
 
 <style scoped src="./college.css"></style>
+
+<style scoped>
+.module-workspace.is-notice{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}
+.is-notice-module .profile-adaptation{display:flex;align-items:center;gap:8px;margin:12px 0}.is-notice-module .profile-adaptation input{width:auto}
+@media(max-width:1100px){.module-workspace.is-notice{grid-template-columns:minmax(0,1fr)}}
+</style>
