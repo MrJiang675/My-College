@@ -19,8 +19,9 @@ public class NoticeController {
     private static final Pattern CONTENT = Pattern.compile("class=\"v_news_content\">(.*?)</div>", Pattern.DOTALL);
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     private final CurrentUserService users;
-    private List<Notice> cached = List.of();
-    private Instant refresh = Instant.MIN;
+    private final java.util.concurrent.Semaphore refreshGate=new java.util.concurrent.Semaphore(1);
+    private volatile List<Notice> cached = List.of();
+    private volatile Instant refresh = Instant.MIN;
     public record Notice(String id, String title, String url) {}
     public NoticeController(CurrentUserService users) { this.users = users; }
 
@@ -32,9 +33,10 @@ public class NoticeController {
     }
 
     @GetMapping
-    public synchronized ApiResponse<List<Notice>> list() {
+    public ApiResponse<List<Notice>> list() {
         users.getRequiredCurrentUser();
         if(Instant.now().isAfter(refresh)) {
+            if(!refreshGate.tryAcquire())throw new BusinessException("公告正在刷新，请稍后重试或粘贴原文。");
             try {
                 var matches=ITEM.matcher(fetch(LIST));
                 var items=new LinkedHashMap<String,Notice>();
@@ -48,7 +50,7 @@ public class NoticeController {
             } catch(Exception e) {
                 if(e instanceof InterruptedException) Thread.currentThread().interrupt();
                 throw new BusinessException("院系公告暂时无法获取，请打开原站或粘贴原文");
-            }
+            } finally {refreshGate.release();}
         }
         return ApiResponse.success(cached);
     }

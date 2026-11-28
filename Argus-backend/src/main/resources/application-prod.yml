@@ -41,8 +41,9 @@ spring:
         distance-type: cosine_distance
   servlet:
     multipart:
-      max-file-size: ${ARGUS_MAX_UPLOAD_SIZE_MB:10}MB
-      max-request-size: ${ARGUS_MAX_REQUEST_SIZE_MB:12}MB
+      file-size-threshold: 0B
+      max-file-size: ${ARGUS_MAX_UPLOAD_SIZE_MB:50}MB
+      max-request-size: ${ARGUS_MAX_REQUEST_SIZE_MB:60}MB
 
 storage:
   minio:
@@ -86,3 +87,8 @@ youcom:
     top-k: 10
 
 argus.retrieval.elasticsearch-enabled: ${ARGUS_ELASTICSEARCH_ENABLED:false}
+
+# 视觉提取使用现有 ZHIPUAI_API_KEY，按部署环境选择云端模型。
+argus.vision.model: ${ARGUS_VISION_MODEL:glm-4.6v-flash}
+argus.vision.max-image-mb: ${ARGUS_VISION_MAX_IMAGE_MB:5}
+argus.vision.timeout-seconds: ${ARGUS_VISION_TIMEOUT_SECONDS:30}

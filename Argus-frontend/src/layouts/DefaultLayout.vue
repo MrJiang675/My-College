@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import http from '@/api/http'
+import ContextualAssistantDrawer from '@/components/ContextualAssistantDrawer.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { moduleGuides, type ModuleGuideKey } from '@/constants/moduleGuides'
 
@@ -10,27 +11,43 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-const progress=ref({school:'',major:'',grade:'',complete:0,documents:0,entries:0})
-function updateProgress(event:Event){
- const detail=(event as CustomEvent).detail
- if(detail)Object.assign(progress.value,detail)
+const progress = ref({ school: '', major: '', grade: '', complete: 0, documents: 0, entries: 0 })
+function updateProgress(event: Event) {
+  const detail = (event as CustomEvent).detail
+  if (detail) Object.assign(progress.value, detail)
 }
-onMounted(async()=>{
- window.addEventListener('argus:workspace-progress',updateProgress)
- if(!authStore.isUser)return
- try{
-  const row=(await http.get('/college/workspace')).data.data
-  const state=JSON.parse(row.payload)
-  Object.assign(progress.value,{school:state.school||'',major:state.major||'',grade:state.grade||'',entries:state.entries?.length||0,
-   complete:[state.school,state.dept,state.major,state.grade].filter(Boolean).length*25})
-  const docs=(await http.get('/documents')).data.data
-  progress.value.documents=Array.isArray(docs)?docs.filter(d=>d.status==='READY').length:0
- }catch{/* The work area displays its own load status. */}
+onMounted(async () => {
+  window.addEventListener('argus:workspace-progress', updateProgress)
+  if (!authStore.isUser) return
+  try {
+    const row = (await http.get('/college/workspace')).data.data
+    const state = JSON.parse(row.payload)
+    Object.assign(progress.value, {
+      school: state.school || '',
+      major: state.major || '',
+      grade: state.grade || '',
+      entries: state.entries?.length || 0,
+      complete: [state.school, state.dept, state.major, state.grade].filter(Boolean).length * 25,
+    })
+    const docs = (await http.get('/documents')).data.data
+    progress.value.documents = Array.isArray(docs)
+      ? docs.filter((d) => d.status === 'READY').length
+      : 0
+  } catch {
+    /* The work area displays its own load status. */
+  }
 })
-onUnmounted(()=>window.removeEventListener('argus:workspace-progress',updateProgress))
+onUnmounted(() => window.removeEventListener('argus:workspace-progress', updateProgress))
 const userName = computed(() => authStore.currentUser?.displayName ?? '同学')
 
 const currentTitle = computed(() => {
+  if (route.path === '/app/college/mock-interview') return '模拟面试'
+  if (route.path === '/app/groups')
+    return route.query.tab === 'experience'
+      ? '我的项目 · 我的经历'
+      : route.query.tab === 'projects'
+        ? '我的项目'
+        : '协作小组'
   if (route.path.startsWith('/app/college')) {
     const moduleKey = String(route.params.module || 'college') as ModuleGuideKey
     return moduleGuides[moduleKey]?.title ?? '我的大学'
@@ -38,16 +55,26 @@ const currentTitle = computed(() => {
   return (route.meta.title as string) || 'Argus 学生工作台'
 })
 
+const assistantVisible = ref(false)
+const workspaceExpanded = ref(true)
 function askAssistant() {
-  if (route.path.startsWith('/app/college')) {
-    window.dispatchEvent(new CustomEvent('argus:open-context-assistant'))
-    return
-  }
-  router.push('/app/assistant')
+  assistantVisible.value = true
 }
 
 // ── 侧边栏折叠 ──
 const sidebarCollapsed = ref(window.matchMedia('(max-width: 768px)').matches)
+const compactMedia = window.matchMedia('(max-width: 768px)')
+function syncCompact(event: MediaQueryListEvent) {
+  sidebarCollapsed.value = event.matches
+}
+onMounted(() => compactMedia.addEventListener('change', syncCompact))
+onUnmounted(() => compactMedia.removeEventListener('change', syncCompact))
+watch(
+  () => route.fullPath,
+  () => {
+    if (compactMedia.matches) sidebarCollapsed.value = true
+  },
+)
 function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value
 }
@@ -72,18 +99,29 @@ function onDocumentClick(e: MouseEvent) {
   }
 }
 
-onMounted(() => document.addEventListener('click', onDocumentClick))
-onUnmounted(() => document.removeEventListener('click', onDocumentClick))
+onMounted(() => {
+  document.addEventListener('click', onDocumentClick)
+  window.addEventListener('argus:show-assistant', askAssistant)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', onDocumentClick)
+  window.removeEventListener('argus:show-assistant', askAssistant)
+})
 
 // ── 当前激活菜单 ──
 const activeMenu = computed(() => {
   const path = route.path
-  if (path.startsWith('/app/college/')) return 'college-'+String(route.params.module)
-  if(path==='/app/college')return 'college'
+  if (path === '/app/college/mock-interview') return 'college-career'
+  if (path.startsWith('/app/college/')) return 'college-' + String(route.params.module)
+  if (path === '/app/college') return 'college'
   if (path.startsWith('/app/documents')) return 'documents'
+  if (path.startsWith('/app/intelligent')) return 'qa'
   if (path.startsWith('/app/qa')) return 'qa'
   if (path.startsWith('/app/assistant')) return 'assistant'
-  if (path.startsWith('/app/groups')) return 'groups'
+  if (path.startsWith('/app/groups'))
+    return route.query.tab === 'members' || route.query.tab === 'documents'
+      ? 'groups'
+      : 'college-project'
   if (path.startsWith('/app/admin/metrics')) return 'metrics'
   if (path.startsWith('/app/admin')) return 'admin'
   if (path.startsWith('/app/settings')) return 'settings'
@@ -101,9 +139,27 @@ interface MenuItem {
 }
 
 const allMenuItems: MenuItem[] = [
-  {key:'college',label:'我的大学',group:'学习与成长',icon:'⌂',path:'/app/college',roles:['USER']},
-  ...[['learn','01 学习助手'],['practice','02 专业实践'],['opps','03 校园机会与办事'],['experience','04 我的经历'],['career','05 升学就业']].map(([key,label])=>({
-    key:'college-'+key,label:label!,group:'学习与成长',icon:'',path:'/app/college/'+key,roles:['USER']
+  {
+    key: 'college',
+    label: '我的大学',
+    group: '学生工作台',
+    icon: '⌂',
+    path: '/app/college',
+    roles: ['USER'],
+  },
+  ...[
+    ['learn', '01 学习助手'],
+    ['practice', '02 专业实践'],
+    ['opps', '03 校园机会与办事'],
+    ['project', '04 我的项目'],
+    ['career', '05 升学就业'],
+  ].map(([key, label]) => ({
+    key: 'college-' + key,
+    label: label!,
+    group: '学生工作台',
+    icon: '',
+    path: key === 'project' ? '/app/groups?tab=projects' : '/app/college/' + key,
+    roles: ['USER'],
   })),
   {
     key: 'documents',
@@ -115,18 +171,10 @@ const allMenuItems: MenuItem[] = [
   },
   {
     key: 'qa',
-    label: '知识库问答',
+    label: '智能问答',
     group: '资源与协作',
     icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M19 19L16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-    path: '/app/qa',
-    roles: ['USER'] as const,
-  },
-  {
-    key: 'assistant',
-    label: 'AI 助手',
-    group: '资源与协作',
-    icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 12C8.5 10.067 10.067 8.5 12 8.5C13.933 8.5 15.5 10.067 15.5 12C15.5 13.933 13.933 15.5 12 15.5C10.067 15.5 8.5 13.933 8.5 12Z" stroke="currentColor" stroke-width="1.5"/><path d="M18.5 8.5L20 7M5.5 8.5L4 7M18.5 15.5L20 17M5.5 15.5L4 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-    path: '/app/assistant',
+    path: '/app/intelligent',
     roles: ['USER'] as const,
   },
   {
@@ -134,7 +182,7 @@ const allMenuItems: MenuItem[] = [
     label: '协作小组',
     group: '资源与协作',
     icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="8" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="16" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 20V19C2 16.7909 3.79086 15 6 15H10C12.2091 15 14 16.7909 14 19V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 15H16C18.2091 15 20 16.7909 20 19V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
-    path: '/app/groups',
+    path: '/app/groups?tab=members',
     roles: ['USER'] as const,
   },
 ]
@@ -205,6 +253,7 @@ function navigateTo(path: string) {
 
 <template>
   <div class="app-layout" :class="{ collapsed: sidebarCollapsed }">
+    <ContextualAssistantDrawer v-model:open="assistantVisible" />
     <!-- ── 侧边栏 ── -->
     <aside class="sidebar">
       <!-- Logo -->
@@ -212,14 +261,22 @@ function navigateTo(path: string) {
         <div class="sidebar-brand__mark">
           <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
             <defs>
-              <linearGradient id="sidebarLogoGrad" x1="2" y1="2" x2="30" y2="30"><stop stop-color="#4A90D9"/><stop offset="1" stop-color="#5CC9C1"/></linearGradient>
-              <path id="sPetal" d="M16 3C17.5 6 20 9 22.5 10C20 11 17.5 11.5 16 13C14.5 11.5 12 11 9.5 10C12 9 14.5 6 16 3Z" fill="url(#sidebarLogoGrad)" opacity="0.7"/>
+              <linearGradient id="sidebarLogoGrad" x1="2" y1="2" x2="30" y2="30">
+                <stop stop-color="#4A90D9" />
+                <stop offset="1" stop-color="#5CC9C1" />
+              </linearGradient>
+              <path
+                id="sPetal"
+                d="M16 3C17.5 6 20 9 22.5 10C20 11 17.5 11.5 16 13C14.5 11.5 12 11 9.5 10C12 9 14.5 6 16 3Z"
+                fill="url(#sidebarLogoGrad)"
+                opacity="0.7"
+              />
             </defs>
-            <use href="#sPetal"/>
-            <use href="#sPetal" transform="rotate(90 16 16)"/>
-            <use href="#sPetal" transform="rotate(180 16 16)"/>
-            <use href="#sPetal" transform="rotate(270 16 16)"/>
-            <circle cx="16" cy="16" r="5.5" fill="url(#sidebarLogoGrad)"/>
+            <use href="#sPetal" />
+            <use href="#sPetal" transform="rotate(90 16 16)" />
+            <use href="#sPetal" transform="rotate(180 16 16)" />
+            <use href="#sPetal" transform="rotate(270 16 16)" />
+            <circle cx="16" cy="16" r="5.5" fill="url(#sidebarLogoGrad)" />
           </svg>
         </div>
         <div v-show="!sidebarCollapsed" class="sidebar-brand__text">
@@ -231,14 +288,45 @@ function navigateTo(path: string) {
       <!-- 主导航 -->
       <nav class="sidebar-nav" aria-label="主导航">
         <section v-for="group in menuGroups" :key="group.label">
-          <p v-if="!sidebarCollapsed" class="sidebar-nav__label">{{group.label}}</p>
-          <a v-for="item in group.items" :key="item.key" :href="item.path" class="nav-item" :class="{'is-active':activeMenu===item.key}" :title="item.label" @click.prevent="navigateTo(item.path)">
-            <span v-if="item.icon" class="nav-icon" v-html="item.icon"></span><span v-show="!sidebarCollapsed" class="nav-text">{{item.label}}</span>
-          </a>
+          <button
+            v-if="group.label === '学生工作台' && !sidebarCollapsed"
+            class="sidebar-nav__label tree-toggle"
+            :aria-expanded="workspaceExpanded"
+            @click="workspaceExpanded = !workspaceExpanded"
+          >
+            {{ group.label }} {{ workspaceExpanded ? '⌄' : '›' }}
+          </button>
+          <p v-else-if="!sidebarCollapsed" class="sidebar-nav__label">{{ group.label }}</p>
+          <div
+            v-show="group.label !== '学生工作台' || workspaceExpanded"
+            :class="{ 'workspace-tree': group.label === '学生工作台' && !sidebarCollapsed }"
+          >
+            <a
+              v-for="item in group.items"
+              :key="item.key"
+              :href="item.path"
+              class="nav-item"
+              :class="{ 'is-active': activeMenu === item.key }"
+              :title="item.label"
+              @click.prevent="navigateTo(item.path)"
+            >
+              <span v-if="item.icon" class="nav-icon" v-html="item.icon"></span
+              ><span v-if="sidebarCollapsed && !item.icon" class="nav-number">{{
+                item.label.slice(0, 2)
+              }}</span
+              ><span v-show="!sidebarCollapsed" class="nav-text">{{ item.label }}</span>
+            </a>
+          </div>
         </section>
-        <section v-if="authStore.isUser&&!sidebarCollapsed" class="sidebar-progress">
-          <button @click="navigateTo('/app/college?profile=1')">{{progress.school||'完善校园档案'}} · {{progress.major||'专业待填'}} · {{progress.grade||'年级待填'}}</button>
-          <small>档案 {{progress.complete}}% · 讲义 {{progress.documents}} · 经历 {{progress.entries}}</small>
+        <section v-if="authStore.isUser && !sidebarCollapsed" class="sidebar-progress">
+          <button @click="navigateTo('/app/college?profile=1')">
+            {{ progress.school || '完善校园档案' }} · {{ progress.major || '专业待填' }} ·
+            {{ progress.grade || '年级待填' }}
+          </button>
+          <small
+            >档案 {{ progress.complete }}% · 讲义 {{ progress.documents }} · 经历
+            {{ progress.entries }}</small
+          >
         </section>
       </nav>
       <!-- 底部导航 -->
@@ -273,9 +361,18 @@ function navigateTo(path: string) {
       <!-- 顶栏 -->
       <header class="topbar">
         <div class="topbar-left">
-          <button class="btn-sidebar-toggle" :title="sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'" @click="toggleSidebar">
+          <button
+            class="btn-sidebar-toggle"
+            :title="sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'"
+            @click="toggleSidebar"
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M4 6H20M4 12H14M4 18H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              <path
+                d="M4 6H20M4 12H14M4 18H20"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
             </svg>
           </button>
           <div class="breadcrumb">
@@ -288,12 +385,22 @@ function navigateTo(path: string) {
           <ThemeToggle />
           <el-tooltip
             v-if="authStore.isUser"
-            :content="route.path.startsWith('/app/college') ? '带上当前材料、实验参数或任务上下文' : '打开独立 AI 助手，管理多轮会话'"
+            :content="
+              route.path.startsWith('/app/college')
+                ? '带上当前材料、实验参数或任务上下文'
+                : '打开独立 AI 助手，管理多轮会话'
+            "
             placement="bottom"
           >
             <button type="button" class="ask-assistant-btn" @click="askAssistant">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M8 10h8M8 14h5M21 12a9 9 0 0 1-9 9H5l-3 2 1-5a9 9 0 1 1 18-6Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                <path
+                  d="M8 10h8M8 14h5M21 12a9 9 0 0 1-9 9H5l-3 2 1-5a9 9 0 1 1 18-6Z"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
               <span>问助手</span>
             </button>
@@ -306,7 +413,13 @@ function navigateTo(path: string) {
                 <span class="user-chip__role">{{ authStore.isAdmin ? '系统管理员' : '同学' }}</span>
               </span>
               <svg class="user-chip__caret" width="12" height="12" viewBox="0 0 24 24" fill="none">
-                <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path
+                  d="M6 9l6 6 6-6"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
             </button>
             <!-- 下拉菜单 -->
@@ -321,9 +434,26 @@ function navigateTo(path: string) {
               <div class="dropdown-divider"></div>
               <button class="dropdown-item" @click="handleLogout">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                  <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
-                  <path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
-                  <path d="M21 12H9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+                  <path
+                    d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M16 17L21 12L16 7"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M21 12H9"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                  />
                 </svg>
                 <span>退出登录</span>
               </button>
@@ -349,7 +479,22 @@ function navigateTo(path: string) {
 }
 
 /* ════════════ Sidebar ════════════ */
-.sidebar-progress{padding:14px;font-size:12px;border-top:1px solid var(--border-default)}.sidebar-progress button{border:0;background:transparent;color:inherit;text-align:left}.sidebar-progress small{display:block;margin-top:8px}.sidebar {
+.sidebar-progress {
+  padding: 14px;
+  font-size: 12px;
+  border-top: 1px solid var(--border-default);
+}
+.sidebar-progress button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.sidebar-progress small {
+  display: block;
+  margin-top: 8px;
+}
+.sidebar {
   width: 244px;
   flex-shrink: 0;
   background: var(--sidebar-background);
@@ -596,7 +741,9 @@ function navigateTo(path: string) {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .college-nav-item__toggle:hover {
@@ -634,7 +781,9 @@ function navigateTo(path: string) {
   font-size: 0.8rem;
   text-align: left;
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
 }
 
 .college-submenu__item:hover {
@@ -671,7 +820,9 @@ function navigateTo(path: string) {
 
 .college-submenu-enter-active,
 .college-submenu-leave-active {
-  transition: opacity 0.16s ease, transform 0.16s ease;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
 }
 
 .college-submenu-enter-from,
@@ -789,7 +940,6 @@ function navigateTo(path: string) {
   gap: 12px;
 }
 
-
 .ask-assistant-btn {
   display: inline-flex;
   align-items: center;
@@ -804,7 +954,10 @@ function navigateTo(path: string) {
   font-weight: 700;
   transition: all 0.18s ease;
 }
-.ask-assistant-btn:hover { background: var(--surface-accent-strong); border-color: var(--brand-primary); }
+.ask-assistant-btn:hover {
+  background: var(--surface-accent-strong);
+  border-color: var(--brand-primary);
+}
 
 /* User chip */
 .user-chip {
@@ -880,8 +1033,12 @@ function navigateTo(path: string) {
 
 /* Hide extra text when very narrow */
 @media (max-width: 640px) {
-  .ask-assistant-btn span { display: none; }
-  .ask-assistant-btn { padding: 7px 9px; }
+  .ask-assistant-btn span {
+    display: none;
+  }
+  .ask-assistant-btn {
+    padding: 7px 9px;
+  }
   .user-chip__text {
     display: none;
   }
@@ -890,7 +1047,6 @@ function navigateTo(path: string) {
     padding: 5px;
   }
 }
-
 
 /* ── 用户下拉菜单 ── */
 .user-menu-wrapper {
@@ -999,7 +1155,6 @@ function navigateTo(path: string) {
   color: var(--el-color-danger);
 }
 
-
 /* ════════════ Content ════════════ */
 .main-content {
   flex: 1;
@@ -1038,6 +1193,62 @@ function navigateTo(path: string) {
 
   .main-content {
     padding: 20px 16px;
+  }
+}
+</style>
+
+<style scoped>
+.tree-toggle {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  color: var(--text-secondary);
+}
+.workspace-tree {
+  margin-left: 14px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border-default);
+}
+.workspace-tree .nav-item {
+  font-size: 13px;
+  color: var(--text-secondary);
+  position: relative;
+}
+.workspace-tree .nav-item.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-primary);
+  border-radius: 10px;
+}
+.workspace-tree .nav-item.is-active::before {
+  content: '';
+  position: absolute;
+  left: -13px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  background: var(--accent-primary);
+  border-radius: 3px;
+}
+</style>
+
+<style scoped>
+@media (max-width: 600px) {
+  .breadcrumb {
+    display: none;
+  }
+  .topbar-left {
+    flex: 0 0 auto;
+  }
+  .topbar-right {
+    gap: 8px;
+  }
+  .topbar {
+    padding: 10px 12px;
+  }
+  .theme-segment {
+    flex-shrink: 0;
   }
 }
 </style>

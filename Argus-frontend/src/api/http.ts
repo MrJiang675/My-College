@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { renewedToken } from './sessionRefresh'
 
 // ─────────────────────────────────────────────
 // 通用响应结构
@@ -44,7 +45,8 @@ interface ApiErrorPayload {
  * ```
  */
 export const apiBaseUrl: string = import.meta.env.VITE_API_BASE_URL ?? ''
-export const backendUnavailableMessage = '当前仅提供前端预览，后端尚未接入，登录、上传和 AI 对话暂不可用。'
+export const backendUnavailableMessage =
+  '当前仅提供前端预览，后端尚未接入，登录、上传和 AI 对话暂不可用。'
 
 export function requireApiBaseUrl(): string {
   if (!apiBaseUrl) {
@@ -63,6 +65,42 @@ http.interceptors.request.use((config) => {
   requireApiBaseUrl()
   return config
 })
+
+http.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config
+    if (
+      error.response?.status !== 401 ||
+      !config ||
+      config._sessionRetried ||
+      /\/auth\/(refresh|login|register|demo-guest|logout)/.test(config.url || '') ||
+      config.signal?.aborted
+    )
+      throw error
+    config._sessionRetried = true
+    const stale = String(config.headers?.Authorization || '').replace(/^Bearer /, '')
+    config.headers.Authorization = `Bearer ${await renewedToken(stale)}`
+    return http.request(config)
+  },
+)
+
+export async function authenticatedFetch(
+  path: string,
+  token: string,
+  options: RequestInit,
+): Promise<Response> {
+  const request = (value: string) =>
+    fetch(`${requireApiBaseUrl()}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers: { ...options.headers, Authorization: `Bearer ${value}` },
+    })
+  const response = await request(token)
+  if (response.status !== 401 || options.signal?.aborted) return response
+  await response.body?.cancel()
+  return request(await renewedToken(token))
+}
 
 // ─────────────────────────────────────────────
 // 工具函数

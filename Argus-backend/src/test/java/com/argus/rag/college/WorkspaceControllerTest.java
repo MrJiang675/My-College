@@ -23,4 +23,10 @@ class WorkspaceControllerTest {
         assertEquals(409,controller.save(change).getStatusCode().value());
         verify(db).update(27L,2L,"{}");
     }
+    @Test void imageBase64IsNeverPersisted(){
+        when(users.getRequiredCurrentUser()).thenReturn(new CurrentUser(27L,"u","A"));
+        var state=JsonNodeFactory.instance.objectNode();state.putObject("pages").put("source","data:image/png;base64,AAAA");
+        assertThrows(com.argus.rag.common.exception.BusinessException.class,()->controller.save(new WorkspaceController.Change(0,state)));
+        verifyNoInteractions(db);
+    }
 }

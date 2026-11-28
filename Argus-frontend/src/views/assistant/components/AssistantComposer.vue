@@ -184,7 +184,7 @@ defineExpose({ focus, setText })
 /* Shell */
 .acx__shell {
   min-width: 0;
-  background: #fff;
+  background: var(--bg-surface);
   border: 1.5px solid var(--border-default);
   border-radius: 16px;
   padding: 12px 14px 10px;
@@ -286,7 +286,7 @@ defineExpose({ focus, setText })
 }
 
 .acx__kb-select option {
-  background: #fff;
+  background: var(--bg-surface);
   color: var(--text-primary);
 }
 
@@ -435,7 +435,7 @@ defineExpose({ focus, setText })
 
 .acx__btn--abort {
   color: #dc2626;
-  background: #fff;
+  background: var(--bg-surface);
   border: 1px solid rgba(239, 68, 68, 0.35);
 }
 

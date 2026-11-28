@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+const route=useRoute()
 import { ElMessageBox } from 'element-plus'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
@@ -378,6 +380,8 @@ function openCitation(c: AssistantCitationItem) {
 // ── Init ──
 onMounted(async () => {
   await Promise.all([loadSessions(), loadGroupsIfNeeded()])
+  const requestedId=Number(route.query.sessionId)
+  if(Number.isInteger(requestedId)&&requestedId>0&&sessions.value.some(s=>s.sessionId===requestedId)){activeSessionId.value=requestedId;await loadSessionHistory(requestedId)}
   if (sessions.value.length > 0 && activeSessionId.value === null) {
     const firstSession = sessions.value[0]
     if (firstSession) {

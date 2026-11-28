@@ -3,8 +3,9 @@ spring:
     active: dev
   servlet:
     multipart:
-      max-file-size: ${ARGUS_MAX_UPLOAD_SIZE_MB:10}MB
-      max-request-size: ${ARGUS_MAX_REQUEST_SIZE_MB:12}MB
+      file-size-threshold: 0B
+      max-file-size: ${ARGUS_MAX_UPLOAD_SIZE_MB:50}MB
+      max-request-size: ${ARGUS_MAX_REQUEST_SIZE_MB:60}MB
 
 # ──────────────────────────────────────────────
 # MyBatis-Plus 配置
@@ -40,5 +41,10 @@ argus:
       allowed-origins: ${ARGUS_RAG_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
 
 # Resource limits shared by direct and chunked uploads.
-argus.upload.max-size-mb: ${ARGUS_MAX_UPLOAD_SIZE_MB:10}
+argus.upload.max-size-mb: ${ARGUS_MAX_UPLOAD_SIZE_MB:50}
 argus.retrieval.elasticsearch-enabled: ${ARGUS_ELASTICSEARCH_ENABLED:true}
+
+# 云端识图；不运行本地 OCR，图片不写入工作台 JSON。
+argus.vision.model: ${ARGUS_VISION_MODEL:glm-4.6v-flash}
+argus.vision.max-image-mb: ${ARGUS_VISION_MAX_IMAGE_MB:5}
+argus.vision.timeout-seconds: ${ARGUS_VISION_TIMEOUT_SECONDS:30}

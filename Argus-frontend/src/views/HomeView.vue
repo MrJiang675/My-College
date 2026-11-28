@@ -878,7 +878,7 @@ const caseIcons: Record<string, string> = {
   gap: 8px;
   padding: 14px 32px;
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: var(--bg-surface);
   color: var(--brand-primary-dark);
   font-size: 15px;
   font-weight: 600;

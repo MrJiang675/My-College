@@ -1,74 +1,37 @@
 package com.argus.rag.ingestion.service.pipeline.parser;
-
+import java.io.*;
+import java.util.zip.*;
+import javax.xml.stream.*;
 import com.argus.rag.common.exception.BusinessException;
-import org.apache.poi.openxml4j.exceptions.NotOfficeXmlFileException;
-import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.zip.ZipException;
-
-/**
- * DOCX 文档解析器，基于 Apache POI。
- *
- * <h3>支持的格式</h3>
- * <p>支持扩展名为 {@code .docx} 的 Word 文档（Office Open XML 格式）。
- * 注意：不支持旧版 {@code .doc} 格式（OLE2 复合文档格式）。</p>
- *
- * <h3>解析策略</h3>
- * <ol>
- *     <li>使用 Apache POI 的 {@link XWPFDocument} 加载 DOCX 文档</li>
- *     <li>通过 {@link XWPFWordExtractor} 提取全部文本内容（按段落顺序）</li>
- *     <li>统一换行符：将所有 {@code \r\n} 和独立的 {@code \r} 转换为 {@code \n}</li>
- *     <li>去除首尾空白字符</li>
- * </ol>
- *
- * <h3>异常处理</h3>
- * <p>针对不同的异常类型给出不同的错误消息：</p>
- * <ul>
- *     <li>{@link NotOfficeXmlFileException} 或 {@link ZipException} —— 提示文件不是合法 Word 文档</li>
- *     <li>{@link IOException} 及其他 I/O 异常 —— 提示解析失败</li>
- * </ul>
- * <p>所有异常统一包装为
- * {@link com.argus.rag.common.exception.BusinessException}。</p>
- *
- * @author Argus-RAG Team
- * @since 1.0.0
- */
+/** Streaming OOXML body extraction, without loading the ZIP or document DOM into the heap. */
 public class DocxDocumentParser implements DocumentParser {
-
-    /**
-     * 判断是否支持指定扩展名（大小写不敏感）。
-     *
-     * @param extension 文件扩展名
-     * @return 当扩展名为 "docx"（忽略大小写）时返回 {@code true}
-     */
-    @Override
-    public boolean supports(String extension) {
-        return "docx".equalsIgnoreCase(extension);
-    }
-
-    /**
-     * 解析 DOCX 文件内容为纯文本。
-     *
-     * <p>使用 Apache POI 加载 DOCX 并通过提取器获取全部文本。
-     * 解析完成后会自动关闭文档资源。</p>
-     *
-     * @param inputStream DOCX 文件的输入流
-     * @return 解析后的纯文本内容
-     * @throws com.argus.rag.common.exception.BusinessException 当文件不是合法的 DOCX
-     *         格式或读取异常时抛出
-     */
-    @Override
-    public String parse(InputStream inputStream) {
-        try (XWPFDocument document = new XWPFDocument(inputStream);
-             XWPFWordExtractor extractor = new XWPFWordExtractor(document)) {
-            return extractor.getText().replace("\r\n", "\n").replace('\r', '\n').trim();
-        } catch (NotOfficeXmlFileException | ZipException exception) {
-            throw new BusinessException("无效 DOCX 文件：文件内容不是合法的 Word 文档", exception);
-        } catch (IOException exception) {
-            throw new BusinessException("DOCX 文档解析失败", exception);
-        }
-    }
+ public boolean supports(String ext){return "docx".equalsIgnoreCase(ext);}
+ public String parse(InputStream input){
+  try(var lease=ParseBudget.acquire();var zip=new ZipInputStream(input)) {
+   ZipEntry entry; int count=0;
+   while((entry=zip.getNextEntry())!=null && ++count<2000) {
+    if(!entry.getName().equals("word/document.xml")) continue;
+    var factory=XMLInputFactory.newFactory();
+    factory.setProperty(XMLInputFactory.SUPPORT_DTD,false);
+    factory.setProperty("javax.xml.stream.isSupportingExternalEntities",false);
+    // Bound expanded XML bytes too, to stop compressed ZIP bombs before building strings.
+    var bounded=new FilterInputStream(zip){long bytes; public int read(byte[] b,int o,int l)throws IOException{
+     int n=super.read(b,o,l); if(n>0 && (bytes+=n)>16L*1024*1024)throw new IOException("expanded XML limit");return n;
+    } public int read()throws IOException{int n=super.read();if(n>=0 && ++bytes>16L*1024*1024)throw new IOException("expanded XML limit");return n;}};
+    var xml=factory.createXMLStreamReader(bounded);
+    var text=new StringBuilder(); boolean inText=false;
+    try {
+     while(xml.hasNext() && text.length()<200000) {
+      int event=xml.next();
+      if(event==XMLStreamConstants.START_ELEMENT)inText=xml.getLocalName().equals("t");
+      if(event==XMLStreamConstants.CHARACTERS && inText)text.append(xml.getText(),0,Math.min(xml.getTextLength(),200000-text.length()));
+      if(event==XMLStreamConstants.END_ELEMENT){if(xml.getLocalName().equals("p"))text.append('\n');inText=false;}
+     }
+     return text.toString().trim()+(text.length()>=200000?"\n【安全截断：最多提取 200000 字】":"");
+    }finally{xml.close();}
+   }
+   throw new BusinessException("DOCX 缺少正文或结构不合法。");
+  }catch(BusinessException known){throw known;}
+  catch(Exception invalid){throw new BusinessException("DOCX 文档解析失败，文件损坏或解压内容过大。");}
+ }
 }

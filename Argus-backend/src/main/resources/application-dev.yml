@@ -79,8 +79,9 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: ${ARGUS_MAX_UPLOAD_SIZE_MB:10}MB
-      max-request-size: ${ARGUS_MAX_REQUEST_SIZE_MB:12}MB
+      file-size-threshold: 0B
+      max-file-size: ${ARGUS_MAX_UPLOAD_SIZE_MB:50}MB
+      max-request-size: ${ARGUS_MAX_REQUEST_SIZE_MB:60}MB
 
 
 storage:

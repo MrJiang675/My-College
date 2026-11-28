@@ -4,7 +4,12 @@ import { useAuthStore } from '@/stores/auth'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    {path:'/preview',component:()=>import('../views/college/PreviewWorkspace.vue'),meta:{title:'Argus 样例预览'}},
+    { path: '/college/mock-interview', redirect: '/app/college/mock-interview' },
+    {
+      path: '/preview',
+      component: () => import('../views/college/PreviewWorkspace.vue'),
+      meta: { title: 'Argus 样例预览' },
+    },
     // ── 公开页面（无侧边栏布局） ──
     {
       path: '/',
@@ -25,9 +30,25 @@ const router = createRouter({
       component: () => import('../layouts/DefaultLayout.vue'),
       redirect: '/app/college',
       children: [
-        {path:'college/campus',redirect:'/app/college/opps?view=affairs'},
-        {path:'college/project',redirect:'/app/groups?tab=projects'},
-        { path: 'college/:module?', name: 'college', component: () => import('../views/college/CollegeView.vue'), meta: { title: '我的大学 · Argus' } },
+        { path: 'college/campus', redirect: '/app/college/opps?view=affairs' },
+        { path: 'college/project', redirect: '/app/groups?tab=projects' },
+        { path: 'college/experience', redirect: '/app/groups?tab=experience' },
+        {
+          path: 'college/mock-interview',
+          component: () => import('../views/college/MockInterviewView.vue'),
+          meta: { title: '模拟面试' },
+        },
+        {
+          path: 'intelligent',
+          component: () => import('../views/qa/UnifiedQaAssistantView.vue'),
+          meta: { title: '智能问答' },
+        },
+        {
+          path: 'college/:module?',
+          name: 'college',
+          component: () => import('../views/college/CollegeView.vue'),
+          meta: { title: '我的大学 · Argus' },
+        },
 
         {
           path: 'documents',
@@ -38,19 +59,36 @@ const router = createRouter({
         {
           path: 'qa',
           name: 'qa',
-          component: () => import('../views/qa/QaView.vue'),
+          redirect: (to) => ({
+            path: '/app/intelligent',
+            query: { ...to.query, mode: 'knowledge' },
+          }),
           meta: { title: '知识库问答' },
         },
         {
           path: 'assistant',
           name: 'assistant',
-          component: () => import('../views/assistant/AssistantView.vue'),
+          redirect: (to) => ({
+            path: '/app/intelligent',
+            query: {
+              ...to.query,
+              mode: 'assistant',
+              ...(to.params.sessionId ? { sessionId: String(to.params.sessionId) } : {}),
+            },
+          }),
           meta: { title: 'AI 助手' },
         },
         {
           path: 'assistant/:sessionId',
           name: 'assistant-chat',
-          component: () => import('../views/assistant/AssistantView.vue'),
+          redirect: (to) => ({
+            path: '/app/intelligent',
+            query: {
+              ...to.query,
+              mode: 'assistant',
+              ...(to.params.sessionId ? { sessionId: String(to.params.sessionId) } : {}),
+            },
+          }),
           meta: { title: 'AI 助手' },
         },
         {
@@ -100,9 +138,10 @@ router.afterEach((to) => {
 
 // 全局认证守卫
 router.beforeEach(async (to, _from, next) => {
-  if(to.path==='/preview')return next()
+  if (to.path === '/preview') return next()
   const authStore = useAuthStore()
-  const isPublic = to.path === '/preview' || to.path === '/' || to.path === '/login' || to.name === 'not-found'
+  const isPublic =
+    to.path === '/preview' || to.path === '/' || to.path === '/login' || to.name === 'not-found'
 
   // 尝试恢复会话（内部有去重，不会重复请求）
   await authStore.bootstrap()

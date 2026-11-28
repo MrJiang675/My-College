@@ -60,12 +60,12 @@ public class DocumentUploadService {
     private static final int MAX_FILE_HASH_LENGTH = 128;
     /** 文件扩展名最大长度 */
     private static final int MAX_FILE_EXT_LENGTH = 16;
-    /** 分片上传最大文件大小：256MB */
-    @org.springframework.beans.factory.annotation.Value("${argus.upload.max-size-mb:10}")
-    private long maxUploadMb = 10;
+    /** 上传默认 50 MiB，可通过环境变量调整。 */
+    @org.springframework.beans.factory.annotation.Value("${argus.upload.max-size-mb:50}")
+    private long maxUploadMb = 50;
     private long maxFileBytes() { return Math.max(1, maxUploadMb) * 1024L * 1024; }
-    /** 单个分片的最大大小：10MB */
-    private static final long MAX_CHUNK_SIZE = 10L * 1024 * 1024;
+    /** 新上传会话单分片最大 4 MiB；浏览器默认 3 MiB。 */
+    private static final long MAX_CHUNK_SIZE = 4L * 1024 * 1024;
     /** 上传会话过期时长：24 小时 */
     private static final long SESSION_EXPIRE_HOURS = 24L;
     /** 支持的上传文件格式 */
@@ -201,22 +201,16 @@ public class DocumentUploadService {
         log.debug("分片上传-接收分片: uploadId={}, chunkIndex={}/{}, chunkSize={}",
                 uploadRequest.uploadId(), uploadRequest.chunkIndex(), session.getChunkCount(), chunk.getSize());
         LocalDateTime now = LocalDateTime.now();
-        byte[] chunkData;
-        try {
-            chunkData = chunk.getBytes();
-        } catch (IOException exception) {
-            throw new BusinessException("读取分片数据失败");
-        }
-        String computedHash = computeSha256(chunkData);
+        String computedHash = calculateSha256(chunk);
         if (!computedHash.equals(chunkHash)) {
             throw new BusinessException("分片校验失败，数据可能已损坏");
         }
-        try {
+        try (var chunkStream=chunk.getInputStream()) {
             objectStorageService.putObject(
                     session.getStorageBucket(),
                     objectKey,
-                    new ByteArrayInputStream(chunkData),
-                    chunkData.length,
+                    chunkStream,
+                    chunk.getSize(),
                     OCTET_STREAM
             );
         } catch (BusinessException exception) {
@@ -228,7 +222,7 @@ public class DocumentUploadService {
         DocumentUploadChunkEntity uploadChunk = new DocumentUploadChunkEntity();
         uploadChunk.setUploadId(session.getUploadId());
         uploadChunk.setChunkIndex(uploadRequest.chunkIndex());
-        uploadChunk.setChunkSize((long) chunkData.length);
+        uploadChunk.setChunkSize(chunk.getSize());
         uploadChunk.setChunkHash(chunkHash);
         uploadChunk.setStorageBucket(session.getStorageBucket());
         uploadChunk.setStorageObjectKey(objectKey);
@@ -297,12 +291,7 @@ public class DocumentUploadService {
             throw new BusinessException("上传会话状态异常，无法完成上传");
         }
         try {
-            objectStorageService.composeObject(
-                    session.getStorageBucket(),
-                    objectKey,
-                    chunks.stream().map(DocumentUploadChunkEntity::getStorageObjectKey).toList(),
-                    session.getContentType()
-            );
+            mergeStoredChunks(session, chunks, objectKey);
             Long documentId = finalizeUploadedDocument(
                     session.getGroupId(),
                     session.getUploaderUserId(),
@@ -743,6 +732,34 @@ public class DocumentUploadService {
 
     // ──────────────────────── 直接上传辅助方法 ────────────────────────
 
+    /** S3 compose requires >=5 MiB parts; our 3 MiB transport chunks merge on disk instead. */
+    void mergeStoredChunks(DocumentUploadSessionEntity session, List<DocumentUploadChunkEntity> chunks, String objectKey) {
+        java.nio.file.Path temp=null;
+        try {
+            temp=java.nio.file.Files.createTempFile("argus-merge-", ".upload");
+            MessageDigest digest=MessageDigest.getInstance("SHA-256");
+            long total=0;
+            try(var output=new java.security.DigestOutputStream(java.nio.file.Files.newOutputStream(temp),digest)) {
+                byte[] buffer=new byte[8192];
+                for(var chunk:chunks)try(var input=objectStorageService.getObject(session.getStorageBucket(),chunk.getStorageObjectKey())) {
+                    int n;
+                    while((n=input.read(buffer))!=-1) {
+                        total+=n;
+                        if(total>session.getFileSize() || total>maxFileBytes())throw new BusinessException("合并文件超出声明大小，请重新上传。");
+                        output.write(buffer,0,n);
+                    }
+                }
+            }
+            if(total!=session.getFileSize() || !HexFormat.of().formatHex(digest.digest()).equals(session.getFileHash()))
+                throw new BusinessException("完整文件校验失败，请重新上传。");
+            try(var input=java.nio.file.Files.newInputStream(temp)) {
+                objectStorageService.putObject(session.getStorageBucket(),objectKey,input,total,session.getContentType());
+            }
+        }catch(BusinessException known){throw known;}
+        catch(Exception failure){throw new BusinessException("分片安全合并失败，请稍后重试。");}
+        finally {if(temp!=null)try{java.nio.file.Files.deleteIfExists(temp);}catch(IOException ignored){}}
+    }
+
     private MultipartFile requireValidFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("上传文件不能为空");
@@ -764,9 +781,13 @@ public class DocumentUploadService {
     }
 
     private String calculateSha256(MultipartFile file) {
-        try {
-            return computeSha256(file.getBytes());
-        } catch (IOException exception) {
+        try (var input = file.getInputStream()) {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] buffer = new byte[8192];
+            int n;
+            while ((n=input.read(buffer))!=-1) digest.update(buffer,0,n);
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (IOException | NoSuchAlgorithmException exception) {
             throw new BusinessException("读取上传文件失败");
         }
     }

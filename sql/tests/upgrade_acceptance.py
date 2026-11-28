@@ -60,8 +60,8 @@ def main():
         print("PASS preset is labeled and custom question requests API")
         group=c1.request.post(BASE+"/api/groups",headers={"Authorization":"Bearer "+s1["accessToken"]},data={"name":"评审上传隔离组"}).json()["data"]
         p1.goto(BASE+"/app/documents")
-        p1.get_by_role("button",name="上传文档",exact=True).click()
-        p1.locator("input[type=file]").set_input_files({"name":"too-large.pdf","mimeType":"application/pdf","buffer":b"x"*(15*1024*1024)})
+        p1.get_by_role("button",name="上传文件",exact=True).click()
+        p1.locator("input[type=file]").set_input_files({"name":"too-large.pdf","mimeType":"application/pdf","buffer":b"x"*(51*1024*1024)})
         p1.get_by_text("当前单文件上限为",exact=False).wait_for()
         upload_calls=[]
         p1.on("request",lambda r:upload_calls.append(r.url) if "/documents/upload" in r.url else None)

@@ -232,7 +232,7 @@ function formatTime(ts: number): string {
   gap: 6px;
   max-width: 100%;
   padding: 8px 14px;
-  background: #fff;
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);

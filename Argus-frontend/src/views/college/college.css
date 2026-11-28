@@ -345,7 +345,7 @@
   gap: 5px;
   padding: 18px;
   border-radius: var(--radius-md);
-  background: #eaf3fd;
+  background: var(--surface-accent);
   color: var(--brand-primary-dark);
 }
 .shortcut-card span {

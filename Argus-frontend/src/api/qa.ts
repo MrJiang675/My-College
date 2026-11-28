@@ -1,4 +1,4 @@
-import http, { requireApiBaseUrl, type ApiResponse } from './http'
+import http, { authenticatedFetch, type ApiResponse } from './http'
 
 // ─────────────────────────────────────────────
 // 类型定义
@@ -242,8 +242,7 @@ export async function streamAskQuestion(
   accessToken: string,
   handlers: QaStreamHandlers,
 ): Promise<void> {
-  const baseUrl = requireApiBaseUrl()
-  const response = await fetch(`${baseUrl}/qa/stream-ask`, {
+  const response = await authenticatedFetch('/qa/stream-ask', accessToken, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

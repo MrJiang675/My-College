@@ -33,10 +33,17 @@ public class WorkspaceController {
         if (change.revision() < 0 || change.state() == null || !change.state().isObject())
             throw new BusinessException("请输入有效的工作台数据");
         String payload = change.state().toString();
+        if (containsImageData(change.state())) throw new BusinessException("图片请先提取文字，不能将 Base64 图片存入工作台。");
         if (payload.length() > 1000000) throw new BusinessException("工作台数据过大");
         int updated = change.revision() == 0 ? mapper.create(owner, payload)
             : mapper.update(owner, change.revision(), payload);
         if (updated == 0) return ResponseEntity.status(409).body(new ApiResponse<>(false, null, "其他设备已保存，请重新加载"));
         return ResponseEntity.ok(ApiResponse.success(change.revision()+1));
+    }
+
+    private boolean containsImageData(JsonNode node) {
+        if (node.isTextual()) return node.textValue().matches("(?is).*data:image/[^;]+;base64,.*");
+        for (JsonNode child : node) if (containsImageData(child)) return true;
+        return false;
     }
 }

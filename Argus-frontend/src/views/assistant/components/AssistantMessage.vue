@@ -344,7 +344,7 @@ function pad(n: number): string {
   gap: 6px;
   max-width: 100%;
   padding: 8px 14px;
-  background: #fff;
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
@@ -409,7 +409,7 @@ function pad(n: number): string {
   font-size: 0.78rem;
   font-weight: 600;
   color: #dc2626;
-  background: #fff;
+  background: var(--bg-surface);
   border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 100px;
   cursor: pointer;
