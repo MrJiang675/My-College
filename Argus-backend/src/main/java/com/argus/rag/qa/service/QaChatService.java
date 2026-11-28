@@ -52,7 +52,6 @@ public class QaChatService {
         /** 拒答原因描述：回答格式错误 */
         private static final String FORMAT_ERROR_MESSAGE = "模型返回格式错误，无法解析回答。";
 
-        private static final String MODEL_NAME = "glm-4-flash";
 
         private final ChatClient qaChatClient;
         private final PromptTemplate qaUserPromptTemplate;
@@ -66,7 +65,9 @@ public class QaChatService {
          * 用量信息。
          */
         public record UsageInfo(Integer promptTokens, Integer completionTokens, Integer totalTokens,
-                                boolean estimated, Long latencyMs) {
+                                boolean estimated, Long latencyMs, String modelName) {
+                public UsageInfo(Integer promptTokens,Integer completionTokens,Integer totalTokens,boolean estimated,Long latencyMs){this(promptTokens,completionTokens,totalTokens,estimated,latencyMs,null);}
+                public UsageInfo withModel(String model){return new UsageInfo(promptTokens,completionTokens,totalTokens,estimated,latencyMs,model);}
         }
 
         /**
@@ -166,7 +167,7 @@ public class QaChatService {
                                         AskQuestionResponse.unanswered(FORMAT_ERROR_CODE, FORMAT_ERROR_MESSAGE, List.of())
                                                         .withEvidenceOverview(evidenceOverviewAssembler.assemble(documents)),
                                         new UsageInfo(result.usage.promptTokens(), result.usage.completionTokens(),
-                                                        result.usage.totalTokens(), result.usage.estimated(), latencyMs),
+                                                        result.usage.totalTokens(), result.usage.estimated(), latencyMs, result.usage.modelName()),
                                         evidenceBundle.evidenceLevel(),
                                         documents);
                 }
@@ -178,7 +179,7 @@ public class QaChatService {
                                                         result.output().reasonMessage(), List.of())
                                                         .withEvidenceOverview(evidenceOverviewAssembler.assemble(documents)),
                                         new UsageInfo(result.usage.promptTokens(), result.usage.completionTokens(),
-                                                        result.usage.totalTokens(), result.usage.estimated(), latencyMs),
+                                                        result.usage.totalTokens(), result.usage.estimated(), latencyMs, result.usage.modelName()),
                                         evidenceBundle.evidenceLevel(),
                                         documents);
                 }
@@ -191,7 +192,7 @@ public class QaChatService {
                                                 citationAssembler.assembleDocuments(documents))
                                                 .withEvidenceOverview(evidenceOverviewAssembler.assemble(documents)),
                                 new UsageInfo(result.usage.promptTokens(), result.usage.completionTokens(),
-                                                result.usage.totalTokens(), result.usage.estimated(), latencyMs),
+                                                result.usage.totalTokens(), result.usage.estimated(), latencyMs, result.usage.modelName()),
                                 evidenceBundle.evidenceLevel(),
                                 documents);
         }
@@ -218,7 +219,7 @@ public class QaChatService {
                                         .call()
                                         .chatResponse();
                         String text = chatResponse.getResult().getOutput().getText();
-                        UsageInfo usageInfo = extractUsageInfo(chatResponse.getMetadata().getUsage(), false);
+                        UsageInfo usageInfo = extractUsageInfo(chatResponse.getMetadata().getUsage(), false).withModel(chatResponse.getMetadata().getModel());
                         KnowledgeAnswerOutput output = answerParser.parse(text);
                         return new LlmCallResult(output, usageInfo);
                 } catch (RuntimeException exception) {
@@ -249,7 +250,7 @@ public class QaChatService {
                                         .call()
                                         .chatResponse();
                         String rawAnswer = chatResponse.getResult().getOutput().getText();
-                        UsageInfo usageInfo = extractUsageInfo(chatResponse.getMetadata().getUsage(), false);
+                        UsageInfo usageInfo = extractUsageInfo(chatResponse.getMetadata().getUsage(), false).withModel(chatResponse.getMetadata().getModel());
                         log.info(
                                         "QA raw answer fallback. groupId={}, evidenceCount={}, rawLength={}",
                                         groupId,
@@ -375,7 +376,7 @@ public class QaChatService {
                                         Usage usage = response.getMetadata().getUsage();
                                         if (usage != null && usage.getTotalTokens() != null
                                                         && usage.getTotalTokens() > 0) {
-                                                usageRef.set(extractUsageInfo(usage, false));
+                                                usageRef.set(extractUsageInfo(usage, false).withModel(response.getMetadata().getModel()));
                                         }
                                         String text = null;
                                         if (response.getResult() != null && response.getResult().getOutput() != null) {
@@ -399,7 +400,7 @@ public class QaChatService {
                                                                 latencyMs);
                                         } else {
                                                 usage = new UsageInfo(usage.promptTokens(), usage.completionTokens(),
-                                                                usage.totalTokens(), usage.estimated(), latencyMs);
+                                                                usage.totalTokens(), usage.estimated(), latencyMs, usage.modelName());
                                         }
                                         if (onUsageReady != null) {
                                                 onUsageReady.accept(usage);

@@ -116,3 +116,41 @@ ZIP STORE 包含本地头、CRC-32、中央目录和结束记录；UTF-8 文件�
 ### 渐进式状态机与异步保存
 
 不要用“目标非空”直接推导当前步骤，否则快捷填入目标会在用户确认前跳页。步骤应独立保存，确认事件才推进；旧状态只在初次加载时推断一次。每个申请方向单独保存，明确通用建议不等于完成证据对标。跳面试前等待防抖保存完成，否则新页面从后端读取的可能还是旧目标/旧经历。
+
+
+## 2026-11-28：DeepSeek 迁移与动态仿真隔离
+
+**ChatModel 与 EmbeddingModel 是两条独立链路。** 替换对话模型不能顺便替换向量模型；向量维数相同也不代表不同模型的坐标空间相同。本次保留智谱 embedding-2 的1024维、旧向量和索引，仅将生成改为 DeepSeek。
+
+```java
+// 之前：对话明确注入智谱
+// @Qualifier("zhiPuAiChatModel") ChatModel model
+// 现在：业务只使用默认生成模型；向量仍指向原模型
+// @Qualifier("primaryChatModel") ChatModel model
+// EmbeddingModel primaryEmbeddingModel(@Qualifier("zhiPuAiEmbeddingModel") EmbeddingModel m)
+```
+
+**配置层默认值不等于每次网络请求都带上。** Spring AI 1.1.2 工具选项合并可能丢失 extraBody；本次 HTTP 两轮工具回传测试实际发现 thinking 丢失。因此普通同步与流式请求均在序列化发送前强制写入 `thinking.type=disabled`，并更新 Content-Length。仿真走独立客户端，才使用 low/high 推理；不把供应商 reasoning_content 当用户可见回答。
+
+**响应式资源生命周期。** 信号量必须在订阅时获取，取消、异常、读取超时和完成都经过 doFinally，AtomicBoolean 防止重复释放。不能在控制器创建 Flux 时先取许可，否则未订阅或提前异常会泄漏。Reactor handle 每次输入最多 next 一次；本轮曾据此修复同一 chunk 同时发送状态和进度的问题，最终用定时状态心跳与单次 delta 分离。
+
+```java
+return Flux.defer(() -> {
+    if (!slots.tryAcquire()) return Flux.just(error("请稍后重试"));
+    var released = new AtomicBoolean();
+    return work.doFinally(signal -> {
+        if (released.compareAndSet(false, true)) slots.release();
+    });
+});
+```
+
+**SSE 与取消。** HTTP 401 可在开始读流之前续期重试；已开始的生成不能透明重放，以免重复计费。前端按 SSE frame 而非网络 chunk 解析，支持 CRLF/JSON分帧，并用 AbortController 取消；done 之前只显示进度，不执行半段代码。
+
+**iframe sandbox 与 CSP 各自负责不同边界。** allow-scripts 允许动画，但不加 allow-same-origin 才能阻止代码读取父页面的登录态/存储；CSP 在最前 head 阻止连接、外链脚本、嵌套框架等资源。parent.postMessage 必须配合 source/origin/type/长度检查，不能收到任意网页消息就修复、跳转或导出。
+
+```html
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>
+<!-- 绝不添加 allow-same-origin -->
+```
+
+**安全执行不等于学科正确。** 真实光学样例可以正常运行，却把空气到玻璃的临界角标错。应先核对 n1>n2 才可使用 asin(n2/n1)，否则临界角不存在；通过修复后再测边界。此类检查不能由“没有 JS 报错”替代，界面必须明确其为定性仿真。

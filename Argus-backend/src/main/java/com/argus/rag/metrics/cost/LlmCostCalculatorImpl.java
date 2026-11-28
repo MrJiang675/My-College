@@ -22,6 +22,8 @@ public class LlmCostCalculatorImpl implements LlmCostCalculator {
     private static final BigDecimal THOUSAND = new BigDecimal("1000");
 
     public LlmCostCalculatorImpl() {
+        // 官方高峰缓存未命中估算价，非实际账单，可按部署时费率覆盖。
+        modelPricing.put("deepseek-flash",new BigDecimal[]{new BigDecimal("0.002"),new BigDecimal("0.008")});
         // 初始化默认费率（可后续通过配置文件或数据库加载）
         modelPricing.put("qwen-plus", new BigDecimal[]{
                 new BigDecimal("0.0008"), new BigDecimal("0.002")
@@ -33,6 +35,10 @@ public class LlmCostCalculatorImpl implements LlmCostCalculator {
                 new BigDecimal("0.002"), new BigDecimal("0.006")
         });
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    void deepSeekPricing(@org.springframework.beans.factory.annotation.Value("${argus.deepseek.pricing.input-per-1k:0.002}") BigDecimal input,
+                         @org.springframework.beans.factory.annotation.Value("${argus.deepseek.pricing.output-per-1k:0.008}") BigDecimal output){modelPricing.put("deepseek-flash",new BigDecimal[]{input,output});}
 
     @Override
     public BigDecimal calculate(String modelName, int promptTokens, int completionTokens) {

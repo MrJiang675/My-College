@@ -8,7 +8,7 @@ server:
   port: 10001
 
 spring:
-  # 智谱负责本测试的对话和嵌入；停用仍要求独立凭据的 DashScope 服务。
+  # DeepSeek 负责对话/视觉，智谱仅负责 1024 维向量；停用 DashScope。
   autoconfigure:
     exclude:
       - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeChatAutoConfiguration
@@ -28,13 +28,13 @@ spring:
     driver-class-name: org.postgresql.Driver
   ai:
     model:
-      chat: zhipuai
+      chat: openai
       embedding: zhipuai
     zhipuai:
       api-key: ${ZHIPUAI_API_KEY}
+      # 仅保留 embedding-2，禁止初始化智谱聊天。
       chat:
-        options:
-          model: glm-4-flash
+        enabled: false
       embedding:
         options:
           model: embedding-2
@@ -87,3 +87,5 @@ youcom:
   search:
     enabled: false
     top-k: 10
+
+# DeepSeek 连接/模型/限额统一继承 application.yml 的 argus.deepseek，环境变量可覆盖。

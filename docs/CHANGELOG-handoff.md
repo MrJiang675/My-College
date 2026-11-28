@@ -89,3 +89,10 @@
 - 涉及文件：MarkdownContent/safeMarkdown、moduleInputConfig、models/formulaEvaluator/ExperimentWorkspace、PracticeModelProtocol/TaskController/practice.st、PublicNoticeFetcher/NoticeController/NoticeAnalysisSupport、通知工作流和 zipPackager/demoMaterialGenerator/noticeMaterials、CareerWorkflow、工作台协调、类型/样例、面试/情境助教及本轮测试。逐文件清单与证据见 upgrade-seven-experience-report.md。
 - 改动内容摘要：七套本地实验和受限公式求值；认证且防 SSRF 的官网正文抓取；三视图通知工作流、缺附件/时间提醒、候选入单、本地多文件核对、真结构错格式示例、红条阻塞与 ZIP、确认日期后 ICS；三步申请与保存后带目标/经历进面试。
 - 对接注意事项：无 DDL/依赖升级/新环境变量，建议后端先上线。学生提交材料仅浏览器内存，刷新需重选，JSON 导入需重新确认；内容和签字由本人核实。新模型协议与旧前端回退需配套。本机 DNS 为 198.18.* 虚拟测试网段，新接口正确拒绝，公开网页抓取成功待正常公网 DNS 部署环境复验；不放开地址规则绕过。后端 78 测试、前端构建、10 项 Node 测试和浏览器夹具流程通过，真实 AI damped/formula 实测通过。
+
+
+## [2026-11-28] 全站生成迁移 DeepSeek，保留智谱向量化与实践两页实验台
+- 改动动机：统一对话/推理/视觉供应商，并让专业实践先清爽提问、再进入独立动态画布，避免同页堆叠。
+- 涉及文件：OpenAI Starter、DeepSeekApiConfiguration/Properties、默认 ChatModel 与各模块注入/JSON 选项/监控/视觉、application 与四套环境模板；仿真 service/controller/HTML 安全封装/提示词；simulation API、PracticeSetupPage/PracticeLabPage/AiSimulationSandbox、路由/导航与测试。完整列表见 deepseek-migration-practice-handoff.md。
+- 改动内容摘要：常规请求在同步/流式传输前强制关闭 thinking，修复 Spring AI 工具调用丢参数；独立仿真保留 low/high，可靠释放并发许可，完成 HTML 后才加载禁止联网的 opaque iframe；支持报错修复、记录/HTML 导出及七套确定性/公式兜底。
+- 对接注意事项：DEEPSEEK_API_KEY 负责生成/视觉，**ZHIPUAI_API_KEY 继续负责 embedding-2/1024维，不迁移 pgvector**；模型、基址、仿真限额环境变量见交接表。先后端再前端，无 compose/数据库迁移。本机真实生成8192预算曾截断，16000覆盖后完整；光学样例临界条件已通过真实修复接口校正，不把 AI 仿真等同真实实验。88后端测试、前端构建、10项Node、浏览器回归与真实供应商链路已核验。
