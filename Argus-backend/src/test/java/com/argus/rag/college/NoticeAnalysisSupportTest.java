@@ -38,7 +38,8 @@ class NoticeAnalysisSupportTest {
   var input=json.createObjectNode().put("answer","符合");
   input.putObject("eligibility").put("status","GREEN").putArray("evidences").add(quote);
   assertEquals("RED",support.normalize(input,quote,new CampusProfile("测试大学","信息工程学院","信息工程","大一"),true).path("eligibility").path("status").asText());
-  assertEquals("RED",support.normalize(input,quote,new CampusProfile("测试大学","商学院","会计","大二"),true).path("eligibility").path("status").asText());
+  assertEquals("YELLOW",support.normalize(input,quote,new CampusProfile("测试大学","商学院","会计","大二"),true).path("eligibility").path("status").asText());
   assertEquals("GREEN",support.normalize(input,quote,profile,true).path("eligibility").path("status").asText());
  }
+ @Test void ocrPunctuationWhitespaceAndAttachmentEvidenceSurvive(){String source="数统学院本科生，\n请提交申请表；详见附件1。";var in=json.createObjectNode().put("answer","核对");in.putObject("eligibility").put("status","GREEN").putArray("evidences").add("数统学院本科生, 请提交申请表;详见附件1.");in.putArray("checklist").addObject().put("item","申请表").put("evidenceQuote","请提交申请表;详见附件1.");var out=support.normalize(in,source,new CampusProfile("学校","数学与统计学院","数学","大二"),true);assertEquals(1,out.path("checklist").size());assertEquals("YELLOW",out.path("eligibility").path("status").asText());assertFalse(out.path("attachmentWarnings").isEmpty());assertTrue(source.contains(out.path("checklist").get(0).path("evidenceQuote").asText()));}
 }

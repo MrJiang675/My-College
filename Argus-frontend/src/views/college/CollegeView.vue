@@ -1,6 +1,8 @@
 <script setup lang="ts">
 const uploader=ref<InstanceType<typeof MaterialFileUploader>>()
-import {ref} from 'vue'
+import {ref,computed} from 'vue'
+import MarkdownContent from '@/components/MarkdownContent.vue'
+import {moduleInputConfig} from '@/constants/moduleInputConfig'
 function loadNoticeScenario(source:string,name:string){page.value.source=source;page.value.sourceName=name;page.value.sampleId=undefined;page.value.sampleOriginal=undefined}
 function switchNoticeProfile(college:string,grade:string){state.value.dept=college;state.value.grade=grade}
 function saveNoticeStatement(text:string){const key='career-'+state.value.track;state.value.pages[key]??=newPage();state.value.pages[key].applicationDraft=text}
@@ -13,21 +15,21 @@ function applyMaterial(text:string,name:string){page.value.source=text.slice(0,1
 import MaterialFileUploader from '@/components/MaterialFileUploader.vue'
 import LearningContextPanel from './components/LearningContextPanel.vue'
 import { moduleGuides, type ModuleGuideKey } from '@/constants/moduleGuides'
-import { experimentPlugins, defaultModel } from './models'
-import CareerMatrix from './components/CareerMatrix.vue'
+import { experimentPlugins, defaultModel, pluginFor } from './models'
+import CareerWorkflow from './components/CareerWorkflow.vue'
 import DemoSampleBar from '@/components/DemoSampleBar.vue'
 import NoticeActionDashboard from './components/NoticeActionDashboard.vue'
 import NoticeEvidencePanel from './components/NoticeEvidencePanel.vue'
 import OpportunitiesPanel from './components/OpportunitiesPanel.vue'
 import WorkspaceOverview from './components/WorkspaceOverview.vue'
 import CampusAffairsPanel from './components/CampusAffairsPanel.vue'
-import CareerDraftPanel from './components/CareerDraftPanel.vue'
 import ProjectsExperiencePanel from './components/ProjectsExperiencePanel.vue'
 import CampusProfileCard from './components/CampusProfileCard.vue'
 import ModuleGuideHeader from '@/components/ModuleGuideHeader.vue'
 import EmptyExampleCards from '@/components/EmptyExampleCards.vue'
 import ExperimentWorkspace from './ExperimentWorkspace.vue'
 import { useCollegeWorkspace } from './useCollegeWorkspace'
+const inputConfig=computed(()=>moduleInputConfig[mod.value]||moduleInputConfig.experience!)
 const props = defineProps<{ moduleOverride?: string; previewMode?: boolean;projectExample?:boolean }>()
 const {
 loadInterviewExample,
@@ -96,6 +98,7 @@ loadInterviewExample,
   loadNotices,
   useNotice,
   snapshot,
+  saveBeforeInterview,
 } = useCollegeWorkspace(props)
 </script>
 
@@ -117,7 +120,7 @@ loadInterviewExample,
         <template #actions>
           <button class="btn-secondary" @click="exportWorkspace">导出工作台备份</button>
           <button v-if="!home" class="btn-secondary" @click="clearHistory">清理本页对话</button>
-          <RouterLink v-if="mod === 'career'" class="btn-primary" :to="{path:'/app/college/mock-interview',query:{track:state.track}}">开始模拟面试</RouterLink>
+
           <button
             v-if="auth.currentUser?.userCode.startsWith('demo_guest_') || props.previewMode"
             type="button"
@@ -233,26 +236,6 @@ loadInterviewExample,
       </template>
 
       <template v-else>
-        <section v-if="mod === 'career'" class="panel" style="padding: 14px"><label>目标岗位 / 院校方向<input v-model="page.targetRole" maxlength="200" placeholder="例如数据分析实习、信息工程夏令营" /></label>
-
-          <button
-            class="btn-secondary"
-            @click="
-              page.source = '能够清洗数据。能够设计实验对照。提交可复核的项目报告。';
-              page.sourceName = '数据分析实习要求（示例）'
-            "
-          >
-            载入实习要求示例</button
-          ><button
-            class="btn-secondary"
-            @click="
-              page.source = '提交本科成绩单。提供本人科研贡献说明。提供作品或项目报告。';
-              page.sourceName = '升学材料要求（示例）'
-            "
-          >
-            载入升学要求示例
-          </button>
-        </section>
         <div class="career-tabs" v-if="mod === 'career'" role="tablist" aria-label="申请方向">
           <button
             v-for="track in ['实习', '升学']"
@@ -266,7 +249,8 @@ loadInterviewExample,
           </button>
         </div>
 
-        <OpportunitiesPanel :mod="mod" :notices="notices" @load="loadNotices" @use="useNotice" />
+        <OpportunitiesPanel :mod="mod" :notices="notices" @load="loadNotices" @use="useNotice" @fetched="loadNoticeScenario" />
+        <NoticeActionDashboard v-if="mod==='opps'" v-model:materials="page.noticeMaterials" :source="page.source" :profile="{school:state.school,college:state.dept,major:state.major,grade:state.grade}" :enabled="adaptProfile" v-model:analysis="page.noticeAnalysis" :entries="state.entries" @load="loadNoticeScenario" @profile="switchNoticeProfile" @statement="saveNoticeStatement" @adapt="adaptProfile=$event" />
 
         <section v-if="mod === 'practice' && !page.model" class="panel" style="padding: 16px">
           <h2>已注册确定性计算模型</h2>
@@ -282,7 +266,7 @@ loadInterviewExample,
           <p>你也可以描述任意专业的任务，助手将核对是否具备数值模型。</p>
         </section>
         <section
-          v-if="['career', 'experience', 'project'].includes(mod)"
+          v-if="['experience', 'project'].includes(mod)"
           class="panel"
           style="padding: 16px"
         >
@@ -293,18 +277,12 @@ loadInterviewExample,
           </button>
           <p>示例记录带标识，收录前请替换为本人真实成果。</p>
         </section>
-        <section v-if="mod==='opps'" class="panel" style="padding:12px"><strong>从群通知到下一步行动</strong><p>粘贴原文、上传文件或 Ctrl+V 截图 → 核资格 → 问老师 → 导出日历 → 用经历写报名陈述。右侧提供三套内置演示。</p></section>
-        <section v-if="mod === 'opps'" class="panel" style="padding: 12px">
-          <RouterLink to="/app/college/opps">综合分析</RouterLink> ·
-          <RouterLink to="/app/college/opps?view=opportunity">核资格 · 看机会</RouterLink> ·
-          <RouterLink to="/app/college/opps?view=affairs">理清单 · 去办事</RouterLink>
-        </section>
-        <label class="profile-adaptation"
+        <label v-if="mod!=='opps'" class="profile-adaptation"
           ><input v-model="adaptProfile" type="checkbox" />结合校园档案 ·
           {{ state.school || '学校未填' }} / {{ state.major || '跨专业任务' }} /
           {{ state.grade || '年级未填' }}</label
         >
-        <DemoSampleBar v-if="mod!=='opps'" :module="mod" @load="loadDemoSample" />
+        <DemoSampleBar v-if="!['opps','career'].includes(mod)" :module="mod" @load="loadDemoSample" />
         <button
           v-if="replayEngine.replaying.value"
           type="button"
@@ -313,7 +291,9 @@ loadInterviewExample,
         >
           停止样例演示
         </button>
-        <div class="module-workspace" :class="{ 'is-practice': mod === 'practice', 'is-notice':mod==='opps' }">
+
+        <CareerWorkflow v-if="mod==='career'" :page="page" :track="state.track" :entries="state.entries" :busy="busy" :live="live" :save="saveBeforeInterview" @send="send" @sample="loadGrowthSample" />
+        <div v-if="!['opps','career'].includes(mod)" class="module-workspace" :class="{ 'is-practice': mod === 'practice', 'is-notice':mod==='opps' }">
           <div class="module-main">
             <section v-if="mod === 'learn'" class="panel" style="padding: 10px">
               <button
@@ -350,8 +330,8 @@ loadInterviewExample,
                 <section class="material-input" aria-labelledby="material-title" @paste="uploader?.paste($event)">
                   <div class="material-input__header">
                     <div>
-                      <strong id="material-title">材料原文</strong>
-                      <small>上传短材料，或直接粘贴需要核对的内容</small>
+                      <strong id="material-title">{{inputConfig.materialTitle}}</strong>
+                      <small>{{inputConfig.materialSubtitle}}</small>
                     </div>
                     <button
                       v-if="page.sourceName"
@@ -362,12 +342,13 @@ loadInterviewExample,
                       移除
                     </button>
                   </div>
+                  <div class="upload-tags"><small v-for="tag in inputConfig.recommendedUploads" :key="tag">{{tag}}</small></div>
                   <MaterialFileUploader ref="uploader" @extracted="applyMaterial" />
                   <small v-if="page.sourceName">{{page.sourceName}}</small>
                   <textarea
                     v-model="page.source"
                     aria-label="材料原文"
-                    placeholder="也可以直接粘贴讲义、通知、采访记录或岗位要求"
+                    :placeholder="inputConfig.materialPlaceholder"
                   ></textarea>
                   <div class="material-input__footer">
                     <small>内联短材料用于逐句核对；大讲义请上传知识库</small>
@@ -376,20 +357,21 @@ loadInterviewExample,
                 </section>
 
                 <label class="field">
-                  <span>说说你想做什么</span>
+                  <span>{{inputConfig.taskLabel}}</span>
                   <textarea
                     ref="draftInput"
                     v-model="page.draft"
                     :required="mod!=='opps'"
                     maxlength="3500"
                     aria-label="给助手的任务"
-                    placeholder="输入问题、实验条件或通知原文…"
+                    :placeholder="inputConfig.taskPlaceholder"
                   ></textarea>
                 </label>
+                <div class="upload-tags"><button v-for="action in inputConfig.quickActions" :key="action" type="button" class="btn-secondary" @click="fillExample(action)">{{action}}</button></div>
                 <div class="composer-actions">
                   <small>{{ page.draft.length }} / 3500</small>
                   <button class="btn-primary" type="submit" :disabled="busy">
-                    {{ busy ? '正在处理…' : mod==='opps'?'核查通知 →':'发送 →' }}
+                    {{ busy ? '正在处理…' : inputConfig.submitLabel }}
                   </button>
                 </div>
               </form>
@@ -452,11 +434,7 @@ loadInterviewExample,
               />
             </section>
 
-            <p v-if="busy" class="streaming-status" aria-live="polite">
-              <span class="college-spinner" />{{
-                mod === 'practice' ? '正在理解实验条件…' : live || '正在整理回答…'
-              }}
-            </p>
+            <div v-if="busy" class="streaming-status" aria-live="polite"><MarkdownContent :content="live||'正在整理回答…'" /></div>
 
             <section v-if="page.turns.length" class="turns" aria-label="对话记录">
               <article
@@ -478,7 +456,7 @@ loadInterviewExample,
                 </button>
                 <div class="turn__answer">
                   <span>Argus</span>
-                  <p>{{ turn.a }}</p>
+                  <MarkdownContent :content="turn.a" />
                 </div>
                 <details v-if="turn.citations.length" class="citation-details">
                   <summary>
@@ -516,7 +494,7 @@ loadInterviewExample,
               :name="page.sourceName"
               :group="page.group"
             />
-            <NoticeActionDashboard v-if="mod==='opps'" :source="page.source" :profile="{school:state.school,college:state.dept,major:state.major,grade:state.grade}" :enabled="adaptProfile" v-model:analysis="page.noticeAnalysis" :entries="state.entries" @load="loadNoticeScenario" @profile="switchNoticeProfile" @statement="saveNoticeStatement" />
+
 
 
             <section v-if="mod === 'project'" class="context-card panel">
@@ -567,19 +545,6 @@ loadInterviewExample,
               ><RouterLink to="/app/college/experience">查看我的经历 →</RouterLink>
             </form>
 
-            <CareerMatrix v-if="mod==='career'" v-model:draft="page.applicationDraft" v-model:statuses="page.requirementStatuses" :requirements="page.source" :entries="state.entries" :selected="page.selected" />
-            <CareerDraftPanel
-              v-if="mod === 'career'"
-              :entries="state.entries"
-              :selected="page.selected"
-              @select="
-                (id) =>
-                  (page.selected = page.selected?.includes(id)
-                    ? page.selected.filter((v) => v !== id)
-                    : [...(page.selected || []), id])
-              "
-            />
-
             <ProjectsExperiencePanel :mod="mod" :entries="state.entries" @remove="removeEntry" />
 
             <section
@@ -598,7 +563,7 @@ loadInterviewExample,
               >
                 <span>{{ snap.title }}</span>
                 <strong
-                  >{{ experimentPlugins[snap.model.kind].name }} · 恢复参数</strong
+                  >{{ pluginFor(snap.model).name }} · 恢复参数</strong
                 >
               </button>
             </section>
@@ -638,3 +603,5 @@ loadInterviewExample,
 .is-notice-module .profile-adaptation{display:flex;align-items:center;gap:8px;margin:12px 0}.is-notice-module .profile-adaptation input{width:auto}
 @media(max-width:1100px){.module-workspace.is-notice{grid-template-columns:minmax(0,1fr)}}
 </style>
+
+<style scoped>.upload-tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.upload-tags small{padding:4px 8px;border-radius:99px;background:var(--accent-soft);color:var(--text-secondary)}</style>

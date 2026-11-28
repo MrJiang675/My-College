@@ -30,7 +30,13 @@ export function noticeExample(
     eligibility = sentences.find((s) => /面向|申请对象|报送对象/.test(s))!
   const complete = !!profile.college && !!profile.grade && enabled
   const match = profile.college === '信息工程学院' && ['大二', '大三'].includes(profile.grade)
-  const status = !complete ? 'YELLOW' : match ? 'GREEN' : 'RED'
+  const status = !complete
+    ? 'YELLOW'
+    : !['大二', '大三'].includes(profile.grade)
+      ? 'RED'
+      : match
+        ? 'GREEN'
+        : 'YELLOW'
   const date = source.match(/(2026)年(12)月(\d+)日(\d+):(\d+)/)!
   const dateQuote = sentences.find((s) => s.includes(date[0]))!
   const material = sentences.find((s) => s.includes('（PDF）'))!
@@ -40,7 +46,7 @@ export function noticeExample(
       status,
       summary: !complete
         ? '请填写学院与年级并启用档案，再对照资格。'
-        : `${profile.college} · ${profile.grade}：${match ? '符合本示例明示报名范围，认定和院内流程仍需核实。' : '不在本示例规定的学院/年级范围内，请勿按符合资格直接报名。'}`,
+        : `${profile.college} · ${profile.grade}：${match ? '符合本示例明示报名范围，认定和院内流程仍需核实。' : status === 'YELLOW' ? '学院名称或简称需向老师核实，暂不判定不符合。' : '不在本示例明示的年级范围内，请勿按符合资格直接报名。'}`,
       evidences: [eligibility],
     },
     missingDocuments: [

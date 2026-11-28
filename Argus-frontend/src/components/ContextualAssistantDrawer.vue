@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { marked } from 'marked'
+import MarkdownContent from './MarkdownContent.vue'
 import { useAuthStore } from '@/stores/auth'
 import {
   createAssistantSession,
@@ -110,17 +110,6 @@ onUnmounted(() => {
   controller?.abort()
   window.removeEventListener('keydown', escape)
 })
-function markdown(text: string) {
-  const doc = new DOMParser().parseFromString(
-    marked.parse(text.replace(/</g, '&lt;').replace(/>/g, '&gt;')) as string,
-    'text/html',
-  )
-  doc.querySelectorAll('a').forEach((a) => {
-    if (!/^(https?:|mailto:|#)/i.test(a.getAttribute('href') || '')) a.removeAttribute('href')
-    a.rel = 'noopener noreferrer'
-  })
-  return doc.body.innerHTML
-}
 async function send(value = question.value) {
   if (busy.value || !value.trim()) return
   busy.value = true
@@ -213,7 +202,7 @@ async function copy(text: string) {
           >
           <article v-for="(turn, i) in messages" :key="i">
             <strong>{{ turn.q }}</strong>
-            <div class="markdown" v-html="markdown(turn.a)" />
+            <MarkdownContent :content="turn.a" />
             <button v-if="turn.a" @click="copy(turn.a)">复制回复</button>
           </article>
         </div>

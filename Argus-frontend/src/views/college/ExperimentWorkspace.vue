@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { experimentPlugins, defaultModel, normalCdf, validModel, type Model } from './models'
+import {
+  experimentPlugins,
+  defaultModel,
+  normalCdf,
+  validModel,
+  pluginFor,
+  computeModel,
+  modelValues,
+  editModel,
+  type Model,
+} from './models'
 
 const props = defineProps<{
   current: Model
@@ -13,7 +23,7 @@ const emit = defineEmits<{
   restore: [model: Model]
   import: []
   ask: [question: string]
-  news:[]
+  news: []
 }>()
 const mode = ref('自由实验')
 const inspector = ref('参数调节')
@@ -24,29 +34,58 @@ const showMarkers = ref(true)
 const prediction = ref('')
 const adjusted = ref(false)
 const explained = ref(false)
-const plugin = computed(() => experimentPlugins[props.current.kind])
-const result = computed(() => plugin.value.compute(props.current.values))
+const plugin = computed(() => pluginFor(props.current))
+const result = computed(() => computeModel(props.current))
+function compatible(m?: Model) {
+  return (
+    m?.kind === props.current.kind &&
+    (m.kind !== 'formula' ||
+      (props.current.kind === 'formula' &&
+        m.expression === props.current.expression &&
+        m.xVar === props.current.xVar &&
+        m.xMin === props.current.xMin &&
+        m.xMax === props.current.xMax &&
+        m.params.map((p) => p.symbol).join(',') ===
+          props.current.params.map((p) => p.symbol).join(',')))
+  )
+}
 const old = computed(() =>
-  baseline.value?.kind === props.current.kind
+  compatible(baseline.value)
     ? baseline.value
-    : props.previous?.kind === props.current.kind
+    : compatible(props.previous)
       ? props.previous
       : undefined,
 )
-const oldResult = computed(() => (old.value ? plugin.value.compute(old.value.values) : undefined))
+const initial = ref<Model>(JSON.parse(JSON.stringify(props.current)))
+watch(
+  () => props.current,
+  (m) => {
+    if (
+      m.kind !== initial.value.kind ||
+      (m.kind === 'formula' &&
+        initial.value.kind === 'formula' &&
+        m.expression !== initial.value.expression)
+    )
+      initial.value = JSON.parse(JSON.stringify(m))
+  },
+)
+
+const oldResult = computed(() => (old.value ? computeModel(old.value) : undefined))
 const allPoints = computed(() => [
   ...result.value.points,
   ...(result.value.comparisonPoints || []),
+  ...(result.value.lowerEnvelope || []),
   ...(showBaseline.value ? oldResult.value?.points || [] : []),
 ])
 const xmin = computed(() => Math.min(...allPoints.value.map((p) => p.x)))
 const xmax = computed(() => Math.max(...allPoints.value.map((p) => p.x)))
 const ymax = computed(() => Math.max(...allPoints.value.map((p) => p.y), 1e-12))
+const ymin = computed(() => Math.min(...allPoints.value.map((p) => p.y), 0))
 function x(value: number) {
   return 30 + (650 * (value - xmin.value)) / (xmax.value - xmin.value || 1)
 }
 function y(value: number) {
-  return 230 - (200 * value) / ymax.value
+  return 230 - (200 * (value - ymin.value)) / (ymax.value - ymin.value || 1)
 }
 function line(points: { x: number; y: number }[]) {
   return points.map((p) => x(p.x) + ',' + y(p.y)).join(' ')
@@ -55,11 +94,12 @@ const observed = computed(() => {
   const points = result.value.points
   return points[Math.round((point.value * (points.length - 1)) / 100)]!
 })
-const z = computed(() => (observed.value.x - props.current.values[0]!) / props.current.values[1]!)
+const z = computed(
+  () => (observed.value.x - modelValues(props.current)[0]!) / modelValues(props.current)[1]!,
+)
 const challenge = computed(() => {
   if (!oldResult.value) return '请先锁定基准组，再只改变一个参数。'
-  const key =
-    props.current.kind === 'rc' ? '时间常数' : props.current.kind === 'beam' ? '端部挠度' : '标准误'
+  const key = Object.keys(result.value.metrics)[0]!
   const ratio = result.value.metrics[key]! / oldResult.value.metrics[key]!
   return Math.abs(ratio - 2) < 0.02
     ? '达成目标：指标已变为基准的两倍。'
@@ -75,12 +115,14 @@ watch(
   },
 )
 function edit(index: number, value: string) {
-  const model = { kind: props.current.kind, values: [...props.current.values] }
-  model.values[index] = Number(value)
+  const model = editModel(props.current, index, Number(value))
   if (validModel(model)) {
     emit('change', model)
     adjusted.value = true
   }
+}
+function reset() {
+  emit('change', JSON.parse(JSON.stringify(initial.value)))
 }
 function lock() {
   baseline.value = structuredClone(JSON.parse(JSON.stringify(props.current)))
@@ -121,7 +163,7 @@ const quickValues: Record<string, number[]> = {
 </script>
 
 <template>
-  <article class="lab">
+  <article class="lab" id="experiment-workspace">
     <header>
       <div>
         <small>确定性计算模型 · {{ plugin.discipline }}</small>
@@ -142,13 +184,14 @@ const quickValues: Record<string, number[]> = {
         @click="emit('change', defaultModel(item.id))"
       >
         {{ item.name }}</button
-      ><button
-        @click="emit('news')"
-      >
-        新闻采访核实台</button
+      ><button @click="emit('news')">新闻采访核实台</button
       ><button @click="emit('import')">导入指导书 / 跨学科设计</button>
     </nav>
-    <p>已注册模型使用确定性计算；其他学科进入实验设计与测量方法讨论。</p>
+    <button @click="emit('change', defaultModel('formula'))">通用公式绘图</button>
+    <p>确定性计算与受限公式求值；结果仅验证所列假设。</p>
+    <p v-if="current.kind === 'formula'">
+      {{ current.expression }} · {{ current.xLabel }} → {{ current.yLabel }}
+    </p>
     <div v-if="mode === '引导任务'" class="task">
       <label>我的预测<input v-model="prediction" placeholder="先预测，再改变参数" /></label>
       <ul>
@@ -192,6 +235,22 @@ const quickValues: Record<string, number[]> = {
             stroke="#8c70ce"
             stroke-width="2"
           />
+          <polyline
+            v-if="result.lowerEnvelope"
+            :points="line(result.lowerEnvelope)"
+            fill="none"
+            stroke="#8c70ce"
+            stroke-width="2"
+          />
+          <circle
+            v-if="current.kind === 'power' && showMarkers"
+            :cx="x(current.values[1]!)"
+            :cy="y(result.metrics.最大功率!)"
+            r="5"
+            fill="#bd7344"
+          >
+            <title>最大功率点：负载电阻等于内阻</title>
+          </circle>
           <circle v-if="showMarkers" :cx="x(observed.x)" :cy="y(observed.y)" r="4" fill="#bd7344" />
           <text x="30" y="252" fill="currentColor">{{ xmin.toPrecision(3) }}</text>
           <text x="640" y="252" fill="currentColor">{{ xmax.toPrecision(3) }}</text>
@@ -225,8 +284,7 @@ const quickValues: Record<string, number[]> = {
           </div>
         </div>
         <div class="actions">
-          <button @click="lock">锁定当前为基准</button
-          ><button @click="emit('change', defaultModel(current.kind))">重置参数</button
+          <button @click="lock">锁定当前为基准</button><button @click="reset">重置参数</button
           ><button @click="exportRecord">导出记录</button
           ><button @click="requestExplanation">请助手解释差异</button>
         </div>
@@ -247,7 +305,7 @@ const quickValues: Record<string, number[]> = {
             >{{ param.name }}（{{ param.unit }}）
             <input
               type="number"
-              :value="current.values[index]"
+              :value="modelValues(current)[index]"
               :min="param.min"
               :max="param.max"
               :step="param.step"
@@ -256,7 +314,7 @@ const quickValues: Record<string, number[]> = {
             <input
               type="range"
               :aria-label="param.name"
-              :value="current.values[index]"
+              :value="modelValues(current)[index]"
               :min="param.min"
               :max="Math.min(param.max, Math.max(param.defaultValue * 4, 4))"
               :step="param.step"
@@ -278,7 +336,9 @@ const quickValues: Record<string, number[]> = {
               ? '电阻决定电容充至同一比例所需的时间。'
               : current.kind === 'beam'
                 ? '加载位置和截面决定弯曲响应。'
-                : '独立同分布样本，已知总体标准差；均值的标准误随样本量平方根下降。'
+                : current.kind === 'normal'
+                  ? '独立同分布样本，已知总体标准差；均值的标准误随样本量平方根下降。'
+                  : '计算结果依赖本页所列参数、单位和适用条件，不替代实测。'
           }}
         </p>
         <template v-if="inspector === '历史快照对比'"
@@ -297,6 +357,7 @@ const quickValues: Record<string, number[]> = {
 </template>
 <style scoped>
 .lab {
+  scroll-margin-top: 88px;
   padding: 20px;
   border: 1px solid var(--border-default);
   border-radius: 12px;
