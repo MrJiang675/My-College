@@ -175,7 +175,7 @@ defineExpose({ focus, setText })
 /* Shell */
 .qa-composer__shell {
   min-width: 0;
-  background: #fff;
+  background: var(--bg-surface);
   border: 1.5px solid var(--border-default);
   border-radius: 16px;
   padding: 12px 14px 10px;

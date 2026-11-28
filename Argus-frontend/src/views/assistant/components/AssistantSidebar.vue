@@ -342,7 +342,7 @@ function formatRelative(iso: string | null): string {
   font-size: 0.74rem;
   color: var(--text-secondary);
   line-height: 1.55;
-  background: #fff;
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: 10px;
 }
@@ -511,7 +511,7 @@ function formatRelative(iso: string | null): string {
   font-size: 0.84rem;
   font-weight: 600;
   color: var(--text-primary);
-  background: #fff;
+  background: var(--bg-surface);
   border: 1.5px solid var(--brand-primary);
   border-radius: 5px;
   outline: none;

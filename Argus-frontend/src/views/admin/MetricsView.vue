@@ -691,7 +691,7 @@ onMounted(() => {
   color: var(--text-primary);
 }
 .period-tab.active {
-  background: #fff;
+  background: var(--bg-surface);
   color: var(--brand-primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }

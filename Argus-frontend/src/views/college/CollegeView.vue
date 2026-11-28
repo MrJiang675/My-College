@@ -1,4 +1,13 @@
 <script setup lang="ts">
+const uploader=ref<InstanceType<typeof MaterialFileUploader>>()
+import {ref} from 'vue'
+function exportWorkspace(){const url=URL.createObjectURL(new Blob([JSON.stringify(state.value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='Argus-工作台备份.json';a.click();URL.revokeObjectURL(url)}
+function clearHistory(){if(window.confirm('清空当前页对话？请先导出需要保留的内容。')){page.value.turns=[];flush()}}
+function openGlobalAssistant(){if(props.previewMode){warning.value='当前为样例预览，请登录真实工作台后使用助教。';return}window.dispatchEvent(new CustomEvent('argus:show-assistant'))}
+function removeEntry(id:string){if(window.confirm('删除这项经历？'))state.value.entries=state.value.entries.filter(e=>e.id!==id)}
+function applyMaterial(text:string,name:string){page.value.source=text.slice(0,16000);page.value.sourceName=name;warning.value=text.length>16000?'本轮材料已截取前 16000 字，请拆分继续提问。':''}
+
+import MaterialFileUploader from '@/components/MaterialFileUploader.vue'
 import LearningContextPanel from './components/LearningContextPanel.vue'
 import { moduleGuides, type ModuleGuideKey } from '@/constants/moduleGuides'
 import { experimentPlugins, defaultModel } from './models'
@@ -65,7 +74,6 @@ loadInterviewExample,
   dismissOverview,
   reloadWorkspacePage,
   openContextAssistant,
-  upload,
   removeMaterial,
   fillExample,
   collect,
@@ -103,6 +111,9 @@ loadInterviewExample,
     <template v-else>
       <ModuleGuideHeader :guide-key="guideKey" eyebrow="Argus · 学生工作台">
         <template #actions>
+          <button class="btn-secondary" @click="exportWorkspace">导出工作台备份</button>
+          <button v-if="!home" class="btn-secondary" @click="clearHistory">清理本页对话</button>
+          <RouterLink v-if="mod === 'career'" class="btn-primary" to="/app/college/mock-interview">模拟面试 · 上传简历生成追问</RouterLink>
           <button
             v-if="auth.currentUser?.userCode.startsWith('demo_guest_') || props.previewMode"
             type="button"
@@ -115,7 +126,7 @@ loadInterviewExample,
             v-if="!home"
             type="button"
             class="btn-secondary"
-            @click="assistantOpen = !assistantOpen"
+            @click="openGlobalAssistant"
           >
             问助手
           </button>
@@ -330,7 +341,7 @@ loadInterviewExample,
                   }}</small>
                 </label>
 
-                <section class="material-input" aria-labelledby="material-title">
+                <section class="material-input" aria-labelledby="material-title" @paste="uploader?.paste($event)">
                   <div class="material-input__header">
                     <div>
                       <strong id="material-title">材料原文</strong>
@@ -345,41 +356,8 @@ loadInterviewExample,
                       移除
                     </button>
                   </div>
-                  <div class="material-input__actions">
-                    <button
-                      type="button"
-                      class="material-upload-button"
-                      @click="materialInput?.click()"
-                    >
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                      >
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
-                      </svg>
-                      {{ page.sourceName ? '更换 TXT / MD' : '上传 TXT / MD' }}
-                    </button>
-                    <input
-                      ref="materialInput"
-                      class="material-input__file"
-                      type="file"
-                      accept=".txt,.md"
-                      @change="upload"
-                    />
-                    <span v-if="page.sourceName" class="material-input__filename">{{
-                      page.sourceName
-                    }}</span>
-                    <small v-else>短材料随本次问题一起发送</small>
-                  </div>
+                  <MaterialFileUploader ref="uploader" @extracted="applyMaterial" />
+                  <small v-if="page.sourceName">{{page.sourceName}}</small>
                   <textarea
                     v-model="page.source"
                     aria-label="材料原文"
@@ -458,11 +436,11 @@ loadInterviewExample,
                     page.model = model
                   }
                 "
-                @import="materialInput?.click()"
+                @import="uploader?.open()"
                 @ask="
                   (q) => {
                     page.draft = q
-                    assistantOpen = true
+                    openGlobalAssistant()
                   }
                 "
               />
@@ -600,7 +578,7 @@ loadInterviewExample,
               "
             />
 
-            <ProjectsExperiencePanel :mod="mod" :entries="state.entries" />
+            <ProjectsExperiencePanel :mod="mod" :entries="state.entries" @remove="removeEntry" />
 
             <section
               v-if="mod === 'practice' && state.snapshots.length"
@@ -630,29 +608,11 @@ loadInterviewExample,
         v-if="!home"
         class="floating-assistant"
         type="button"
-        @click="assistantOpen = !assistantOpen"
+        @click="openGlobalAssistant"
       >
         Argus · {{ moduleCodes[mod] }} 助教
       </button>
-      <aside v-if="assistantOpen && !home" class="drawer" aria-label="当前任务问助手">
-        <div class="drawer__header">
-          <div>
-            <span class="section-kicker">上下文助手</span>
-            <h2>{{ names[mod] }} · 问助手</h2>
-          </div>
-          <button type="button" aria-label="收起助手" @click="assistantOpen = false">×</button>
-        </div>
-        <label><input v-model="adaptProfile" type="checkbox" />结合校园档案</label>
-        <p class="drawer__context">{{ page.sourceName || page.model?.kind || '当前任务' }}</p>
-        <div v-for="(turn, index) in page.turns.slice(-2)" :key="index" class="drawer__turn">
-          <strong>{{ turn.q }}</strong>
-          <p>{{ turn.a }}</p>
-        </div>
-        <form @submit.prevent="send">
-          <textarea required v-model="assistantQuestion" placeholder="继续追问当前任务"></textarea>
-          <button class="btn-primary" type="submit" :disabled="busy">追问</button>
-        </form>
-      </aside>
+
 
       <button
         class="sync-status"

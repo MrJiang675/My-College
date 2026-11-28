@@ -246,3 +246,13 @@ img, svg { display: block; max-width: 100%; }
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* Semantic aliases follow both themes. Native controls and overlays inherit readable colors. */
+:root{--bg-canvas:var(--page-background);--bg-surface:var(--surface-white);--bg-elevated:var(--surface-muted);--bg-input:var(--surface-subtle);--accent-primary:var(--brand-primary);--accent-soft:var(--surface-accent)}
+input,textarea,select,option{color:var(--text-primary);background-color:var(--bg-input)}
+input::placeholder,textarea::placeholder{color:var(--text-muted);opacity:1}
+:root[data-theme='dark']{--el-bg-color:#111827;--el-bg-color-overlay:#1e293b;--el-bg-color-page:#0b1120;--el-text-color-primary:#f1f5f9;--el-text-color-regular:#cbd5e1;--el-text-color-secondary:#94a3b8;--el-text-color-placeholder:#94a3b8;--el-border-color:#334155;--el-border-color-light:#334155;--el-border-color-lighter:#1e293b;--el-fill-color-blank:#111827;--el-fill-color-light:#1e293b;--el-fill-color-lighter:#1e293b;--el-disabled-text-color:#94a3b8;--el-disabled-bg-color:#1e293b}
+:root[data-theme='dark'] :is(input,textarea,select,option){color:var(--text-primary);background-color:var(--bg-input)}
+:root[data-theme='dark'] :is(button:disabled,input:disabled){color:var(--text-muted)}
+
+:root[data-theme='dark'] button:disabled{background:var(--surface-muted);color:var(--text-muted);opacity:1}

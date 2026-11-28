@@ -11,6 +11,8 @@ type Entry = {
 }
 const props = defineProps<{ mod: string; entries: Entry[] }>()
 const filter = ref('全部')
+const editing = ref('')
+const emit = defineEmits<{ remove: [id: string] }>()
 const visible = computed(() =>
   props.entries.filter((e) => filter.value === '全部' || e.type === filter.value),
 )
@@ -29,6 +31,15 @@ const tags = computed(() => new Set(props.entries.flatMap((e) => e.tags || [])).
     </select>
     <p v-if="!visible.length">当前类型还没有记录，可从项目进展中确认收录。</p>
     <article v-for="entry in visible" :key="entry.id">
+      <button @click="editing = editing === entry.id ? '' : entry.id">
+        {{ editing === entry.id ? '完成编辑' : '编辑' }}
+      </button>
+      <button @click="emit('remove', entry.id)">删除</button>
+      <div v-if="editing === entry.id">
+        <label>经历名称<input v-model="entry.project" maxlength="200" /></label
+        ><label>个人贡献<textarea v-model="entry.text" maxlength="3000" /></label
+        ><label>证明位置<input v-model="entry.source" maxlength="1000" /></label>
+      </div>
       <b>{{ entry.project }}</b
       ><small>{{ entry.type || '实践' }}</small>
       <p>个人负责 · {{ entry.text }}</p>

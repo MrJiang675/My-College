@@ -1,5 +1,5 @@
-const configured = Number(import.meta.env.VITE_MAX_UPLOAD_SIZE_MB ?? 10)
-export const MAX_UPLOAD_MB = Number.isFinite(configured) && configured > 0 ? configured : 10
+const configured = Number(import.meta.env.VITE_MAX_UPLOAD_SIZE_MB ?? 50)
+export const MAX_UPLOAD_MB = Number.isFinite(configured) && configured > 0 ? configured : 50
 export const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
 export const MAX_INLINE_BYTES = 2 * 1024 * 1024
 export function fileLimitMessage(file: File) {

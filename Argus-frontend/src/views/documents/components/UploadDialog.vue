@@ -27,7 +27,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const dragging = ref(false)
 
 const allowedExts = ['.txt', '.md', '.pdf', '.docx']
-const DIRECT_UPLOAD_MAX_SIZE = 10 * 1024 * 1024
+const DIRECT_UPLOAD_MAX_SIZE = 3 * 1024 * 1024
 const MAX_FILE_SIZE = MAX_UPLOAD_BYTES
 
 const chunked = reactive(useChunkedUpload())
@@ -257,7 +257,7 @@ function formatSize(bytes: number): string {
           <span v-else-if="chunked.stage === 'uploading'">
             分片上传中 {{ chunked.chunkProgress.uploaded }}/{{ chunked.chunkProgress.total }}
           </span>
-          <span v-else-if="chunked.stage === 'completing'">正在合并文件...</span>
+          <span v-else-if="chunked.stage === 'completing'">分片上传完成，正在提交后台安全解析队列…</span>
         </div>
         <div class="upload-dialog__progress-row">
           <div class="upload-dialog__progress-track">
@@ -460,7 +460,7 @@ function formatSize(bytes: number): string {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--brand-primary);
-  background: #fff;
+  background: var(--bg-surface);
   border: 1px solid rgba(74, 144, 217, 0.3);
   border-radius: 100px;
   cursor: pointer;
@@ -556,7 +556,7 @@ function formatSize(bytes: number): string {
   font-size: 0.78rem;
   font-weight: 600;
   color: #dc2626;
-  background: #fff;
+  background: var(--bg-surface);
   border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 100px;
   cursor: pointer;

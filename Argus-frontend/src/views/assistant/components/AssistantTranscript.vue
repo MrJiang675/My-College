@@ -120,7 +120,7 @@ watch(
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: #fff;
+  background: var(--bg-surface);
   position: relative;
 }
 

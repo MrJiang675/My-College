@@ -270,7 +270,7 @@ function formatRelative(ts: number): string {
   font-family: inherit;
   font-size: 0.85rem;
   color: var(--text-primary);
-  background: #fff;
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: 10px;
   outline: none;

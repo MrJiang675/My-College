@@ -129,6 +129,7 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
   let revision = 0
   let dirty = false
   let saving = false
+  let retryCount = 0
   let conflict = false
   let closed = false
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -147,12 +148,14 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
       while (dirty) {
         dirty = false
         const payload = JSON.stringify({ revision, state: state.value })
+        if(payload.length>990000){dirty=true;status.value='工作台空间已满，请先导出备份并清理旧对话';return}
         const { data } = await http.put('/college/workspace', payload, {
           headers: { 'Content-Type': 'application/json' },
         })
         revision = data.data
         conflictHint.value = ''
         status.value = '已同步'
+        retryCount = 0
       }
     } catch (error) {
       dirty = true
@@ -162,7 +165,8 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
         conflictHint.value =
           '另一设备已修改这份工作台。请先复制当前未保存内容，再刷新页面查看最新版本。'
       } else {
-        status.value = '同步失败，点击重试'
+        status.value = extractApiError(error, '同步失败，点击重试')
+        if (retryCount++ < 2 && !closed) timer = setTimeout(flush, 1500 * retryCount)
       }
     } finally {
       saving = false
@@ -190,7 +194,7 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
       dirty = true
       status.value = '待同步'
       clearTimeout(timer)
-      timer = setTimeout(flush, 400)
+      timer = setTimeout(flush, 800)
     },
     { deep: true, flush: 'sync' },
   )
@@ -253,7 +257,12 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
     if (!home.value) assistantOpen.value = true
   }
 
+  function provideContext(event:Event){
+    const receive=(event as CustomEvent).detail.receive
+    receive({moduleCode:moduleCodes[mod.value]||'GENERAL',campusProfile:{school:state.value.school,college:state.value.dept,major:state.value.major,grade:state.value.grade},summary:JSON.stringify({material:page.value.source.slice(0,3500),model:page.value.model,entries:['career','experience','project'].includes(mod.value)?state.value.entries.slice(0,8):undefined})})
+  }
   onMounted(async () => {
+    window.addEventListener('argus:request-context',provideContext)
     window.addEventListener('beforeunload', leave)
     window.addEventListener('argus:open-context-assistant', openContextAssistant)
     await loadWorkspace()
@@ -265,40 +274,10 @@ export function useCollegeWorkspace(props: { moduleOverride?: string; previewMod
     controller.abort()
     clearTimeout(timer)
     void flush()
+    window.removeEventListener('argus:request-context',provideContext)
     window.removeEventListener('beforeunload', leave)
     window.removeEventListener('argus:open-context-assistant', openContextAssistant)
   })
-
-  async function upload(event: Event) {
-    const input = event.target as HTMLInputElement
-    const file = input.files?.[0]
-    if (!file) return
-    if (!/\.(txt|md)$/i.test(file.name)) {
-      warning.value = '当前材料仅支持 TXT 或 MD 文件。'
-      input.value = ''
-      return
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      warning.value = '内联材料最多 2 MB；较大讲义请使用下方“上传到知识库”。'
-      input.value = ''
-      return
-    }
-    try {
-      const text = await file.text()
-      if (text.length > 16000) {
-        warning.value = '内联材料最多 16000 字；较大讲义请使用下方“上传到知识库”。'
-        input.value = ''
-        return
-      }
-      page.value.source = text
-      page.value.sourceName = file.name
-      warning.value = ''
-    } catch {
-      warning.value = '文件读取失败，请重试或直接粘贴原文。'
-    } finally {
-      input.value = ''
-    }
-  }
 
   function loadInterviewExample() {
  page.value.source='受访学生甲说：“这周我等班车比上周久。”受访学生乙说：“我今天等了约五分钟。”'
@@ -769,7 +748,6 @@ loadInterviewExample,
     dismissOverview,
     reloadWorkspacePage,
     openContextAssistant,
-    upload,
     removeMaterial,
     fillExample,
     collect,

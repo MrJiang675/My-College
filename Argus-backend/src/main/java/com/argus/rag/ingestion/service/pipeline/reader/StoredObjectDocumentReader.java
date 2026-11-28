@@ -75,13 +75,22 @@ public class StoredObjectDocumentReader implements DocumentReader {
         String bucket = resolveBucket();
         String objectKey = documentEntity.getStorageObjectKey();
         DocumentParser parser = parserFactory.getParser(documentEntity.getFileExt());
-        try (InputStream inputStream = storageService.getObject(bucket, objectKey)) {
-            String content = parser.parse(inputStream);
-            return List.of(buildDocument(content, bucket, objectKey));
+        java.nio.file.Path temp=null;
+        try {
+            temp=java.nio.file.Files.createTempFile("argus-object-", ".cache");
+            try(InputStream object=storageService.getObject(bucket,objectKey)) {
+                java.nio.file.Files.copy(object,temp,java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            try(InputStream inputStream=java.nio.file.Files.newInputStream(temp)) {
+                String content=parser.parse(inputStream);
+                return List.of(buildDocument(content,bucket,objectKey));
+            }
         } catch (BusinessException exception) {
             throw exception;
         } catch (Exception exception) {
             throw new BusinessException("读取存储文档失败", exception);
+        } finally {
+            if(temp!=null)try{java.nio.file.Files.deleteIfExists(temp);}catch(java.io.IOException ignored){}
         }
     }
 

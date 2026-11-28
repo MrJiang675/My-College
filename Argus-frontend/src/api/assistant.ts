@@ -1,4 +1,4 @@
-import http, { requireApiBaseUrl, type ApiResponse } from './http'
+import http, { authenticatedFetch, type ApiResponse } from './http'
 import type {
   AssistantChatPayload,
   AssistantChatResult,
@@ -165,8 +165,7 @@ export async function streamAssistantMessage(
     signal?: AbortSignal
   },
 ): Promise<void> {
-  const baseUrl = requireApiBaseUrl()
-  const response = await fetch(`${baseUrl}/assistant/chat/stream`, {
+  const response = await authenticatedFetch('/assistant/chat/stream', accessToken, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

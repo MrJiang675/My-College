@@ -699,3 +699,15 @@ sudo sysctl --system
 此时新增 Swap 已可用。若原 500 MiB 的路径确认为 /swapfile，可先确认新 Swap 空闲空间足以承接，再执行 sudo swapoff /swapfile，并在 /etc/fstab 中移除原条目。回退时启用原 Swap，再停用新 Swap，恢复 fstab 备份及原 swappiness 配置。
 
 低内存模式环境变量 ARGUS_ELASTICSEARCH_ENABLED=false，使检索和入库跳过 ES。仅需 ES 时启用 Compose es profile 并将开关设为 true。文档解析只允许一个活跃任务、最多 8 个排队任务；队列满时落为失败并提示重试。每分钟扫描超过 8 分钟的 PROCESSING，更新文档和关联任务状态。
+
+## 2026-11-28 工作台文件提取与 50 MB 上传
+
+当前知识库单文件默认 50 MiB，前端 3 MiB 分片，后端单分片最大 4 MiB，Nginx 请求体 60m。配置 ARGUS_MAX_UPLOAD_SIZE_MB=50、ARGUS_MAX_REQUEST_SIZE_MB=60 与 VITE_MAX_UPLOAD_SIZE_MB=50 时保持两端一致。multipart 使用 0B 内存阈值，需确保系统临时目录有足够空间并可写。
+
+3 MiB 分片不直接走 S3 compose：应用将分片流式写入临时磁盘文件，校验全文件大小与 SHA-256 后上传最终对象，finally 删除临时文件。对象读取和 PDF/Text 解析使用临时文件，DOCX 使用受限流式 OOXML 解析。PDF 最多 150 页 / 200000 字；DOCX/TXT/MD 最多约 200000 字，截断会明确标记。单线程入库队列与 ES 开关保持。50 MB 是传输大小，不代表可以无限展开文档内容。
+
+短材料接口 /api/college/files/extract-text：图片最多 5 MiB、文档最多 15 MiB、返回文字最多 30000 字。使用已有 ZHIPUAI_API_KEY；ARGUS_VISION_MODEL 默认 glm-4.6v-flash、ARGUS_VISION_MAX_IMAGE_MB 默认 5（硬上限 5）、ARGUS_VISION_TIMEOUT_SECONDS 默认 30。浏览器将图片压缩为 JPEG，最长宽度 1600、长边高度不超过 6000；不安装本地 OCR、不保存原图到工作台。云端繁忙时返回中文错误，可继续输入文字。
+
+模拟面试使用原智谱 ChatModel，单次 45 秒超时，专用 JSON 模式与 4096 输出 token 上限。/generate 和 /evaluate 要求有效登录；仅面试使用该输出设置，不改变其他聊天调用。
+
+本次已验证本机 384m 堆、ES 关闭时 50 MiB 的有效单页 PDF（填充空白扩展文件大小）分片入库为 READY。这不是复杂 PDF 压测或 2G 生产容量承诺；保留上节的内存监控和故障回退。需要回退时先同步降低前后端上传限额，再恢复上一版制品与配置；没有数据库结构迁移。

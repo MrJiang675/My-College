@@ -33,7 +33,7 @@ import java.util.Map;
 @Slf4j
 public class YoucomSearchService {
 
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(8);
     private static final String SEARCH_URL = "https://ydc-index.io/v1/search";
 
     private final HttpClient httpClient;

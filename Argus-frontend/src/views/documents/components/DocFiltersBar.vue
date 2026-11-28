@@ -105,7 +105,7 @@ const statusValue = computed({
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
           <path d="M12 19V5M5 12L12 5L19 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-        <span>上传文档</span>
+        <span>上传文件</span>
       </button>
     </div>
   </div>
@@ -176,14 +176,14 @@ const statusValue = computed({
 
 .filters-bar__select:focus,
 .filters-bar__input:focus {
-  background: #fff;
+  background: var(--bg-surface);
   border-color: var(--brand-primary);
   box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.1);
 }
 
 .filters-bar__select:hover:not(:disabled),
 .filters-bar__input:hover {
-  background: #fff;
+  background: var(--bg-surface);
   border-color: var(--border-default);
 }
 

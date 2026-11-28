@@ -70,3 +70,9 @@
 - 涉及文件：Argus-backend/src/main/resources/application-test.yml、docs/https-setup.md、本记录。
 - 改动内容摘要：test 绑定回环地址，数据源固定为 argus_test；沿用智谱模型及上传限制，使用独立 cookie、存储桶和索引。
 - 对接注意事项：只启用 test。数据库密码通过 ARGUS_TEST_DB_PASSWORD 注入，模型及对象存储凭据均由后端运行环境提供；启动命令和已验证结果见 https-setup.md。
+
+## [2026-11-28] 工作台九项核心体验与功能升级
+- 改动动机：修复过期会话与保存失败的恢复路径，整合导航，补齐图片/短文档提取、模拟面试与情境助教，并同步提升上传能力。
+- 涉及文件：前端 api/http 与 SSE API、DefaultLayout/router、MaterialFileUploader、ContextualAssistantDrawer、MockInterviewView、UnifiedQaAssistantView、工作台与主题样式；后端 CollegeFileExtractController、MockInterviewController、WorkspaceController、NoticeController、文件上传与解析器；application 配置、deploy 模板与本次测试。完整清单见 upgrade-nine-prompts-report.md。
+- 改动内容摘要：REST 与 SSE 共用单次刷新重试；工作台 800ms 防抖与最多两次自动重试、备份/清理恢复；树形侧栏；经历并入项目，问答双 Tab；云端 OCR 与短文档提取；五题面试及导出；50 MB/3 MB 分片与磁盘合并；深色主题及醒目切换。
+- 对接注意事项：知识库默认 50 MiB，multipart 60 MiB，Nginx 60m；短材料文档 15 MiB、图片 5 MiB。新增 ARGUS_VISION_MODEL、ARGUS_VISION_MAX_IMAGE_MB、ARGUS_VISION_TIMEOUT_SECONDS，沿用后端 ZHIPUAI_API_KEY。旧路由保留跳转。没有数据库迁移，没有部署公网服务器；云端模型可用性和容量验收以本次报告为准。

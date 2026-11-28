@@ -4,7 +4,7 @@ import { ref } from 'vue'
 import { completeDocumentUpload, initDocumentUpload, uploadDocumentChunk } from '@/api/document'
 import { extractApiError } from '@/api/http'
 
-const CHUNK_SIZE = 5 * 1024 * 1024
+const CHUNK_SIZE = 3 * 1024 * 1024
 
 export function useChunkedUpload() {
   const isUploading = ref(false)

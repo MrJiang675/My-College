@@ -99,8 +99,7 @@ public class DocumentPreviewService {
         String bucket = resolveBucket(document);
         String objectKey = document.getStorageObjectKey();
         try (InputStream inputStream = storageService.getObject(bucket, objectKey)) {
-            byte[] bytes = inputStream.readAllBytes();
-            return new String(bytes, StandardCharsets.UTF_8);
+            return com.argus.rag.ingestion.service.pipeline.parser.TextDecodingSupport.decode(inputStream,"读取 Markdown 原始文件失败");
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
